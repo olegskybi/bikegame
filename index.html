@@ -1875,6 +1875,7 @@
   const hudLives = document.getElementById("hud-lives");
   const hudCoins = document.getElementById("hud-coins");
   const hudTime = document.getElementById("hud-time");
+  const hudTimeLabel = document.querySelector(".hud-time-label");
 
   const btnStart = document.getElementById("btn-start");
   const btnReplayWin = document.getElementById("btn-replay-win");
@@ -1956,7 +1957,13 @@
     const v = Math.max(0, Math.min(max, lv|0));
     hudLives.textContent = HEART_RED.repeat(v) + HEART_GREY.repeat(Math.max(0, max - v));
     if (hudCoins) hudCoins.textContent = String(Math.max(0, coins|0));
-    updateTimeHUD(true);
+    if (running) updateTimeHUD(true);
+  }
+
+  function setTimeHUDVisible(visible){
+    const hidden = !visible;
+    if (hudTimeLabel) hudTimeLabel.hidden = hidden;
+    if (hudTime) hudTime.hidden = hidden;
   }
 
   function updateTimeHUD(force = false){
@@ -3224,6 +3231,7 @@
     renderResultStats(winStatsEl, winNextPrizeEl, reason);
     renderResultStats(loseStatsEl, loseNextPrizeEl, reason);
     setHUD(lives, products, runCoins);
+    setTimeHUDVisible(false);
     setOverlay(crashed ? "lose" : "win");
     trackGameEvent("run_finish", { runId: currentRunId, reason, products, coins: runCoins, lives, durationSec: Math.min(RUN_DURATION_SEC, Math.round(runTimeSec)) });
     if (!crashed) sfxWin();
@@ -3549,6 +3557,8 @@
 
     running=true;
     paused=false;
+    setTimeHUDVisible(true);
+    updateTimeHUD(true);
     currentRunId = makeRunId();
     trackGameEvent("run_start", { runId: currentRunId, durationSec: RUN_DURATION_SEC });
     rafId = requestAnimationFrame(frame);
@@ -3562,6 +3572,7 @@
   applyDeviceMode();
   updateViewportVars();
   resizeCanvasToStage();
+  setTimeHUDVisible(false);
   setHUD(LIVES_START, 0, totalCoins);
 
 
