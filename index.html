@@ -1,0 +1,3404 @@
+<div id="bikegame-root">
+  <!-- Desktop fallback -->
+  <div id="bikegame-desktop" style="display:none;">
+    <div class="bg-card">
+      <h2>Игра доступна на телефоне</h2>
+      <p>Открой эту страницу на мобильном, чтобы сыграть.</p>
+    </div>
+  </div>
+
+  <!-- Mobile game -->
+  <div id="bikegame-mobile" style="display:none;">
+    <div class="bg-wrap">
+      <div class="hud">
+        <div class="hud-left">
+          <span class="hud-label">Жизни:</span>
+          <span id="hud-lives" class="hud-value">❤️❤️❤️</span>
+          <span class="hud-label hud-time-label">Время:</span>
+          <span id="hud-time" class="hud-value hud-time">45</span>
+        </div>
+
+        <div class="hud-right">
+          <span class="hud-label">Монеты:</span>
+          <span class="hud-coin-group">
+            <img class="coin-icon hud-coin-icon" src="./assets/coin.png" alt="" aria-hidden="true">
+            <span id="hud-coins" class="hud-value">0</span>
+          </span>
+
+          <button id="btn-prizes" class="btn hud-btn" type="button">Призы</button>
+          <button id="btn-sound" class="sound-btn" type="button" aria-label="Выключить звук" aria-pressed="true"></button>
+        </div>
+      </div>
+
+      <div id="stage" class="stage" aria-label="Мини-игра Курьер на велосипеде">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Overlay screens -->
+        <div id="screen-start" class="overlay show">
+          <div class="modal">
+            <h2>Гонка за покупками</h2>
+            <p class="muted">Собирай товары и монеты, открывай призы.</p>
+            <div id="auth-box" class="auth-box">
+              <div class="auth-title">Вход по телефону</div>
+              <div id="auth-status" class="auth-status">Можно играть без входа. Для сохранения на разных устройствах войди по телефону.</div>
+              <div id="auth-form" class="auth-form">
+                <input id="auth-phone" class="auth-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" aria-label="Номер телефона">
+                <button id="btn-auth-code" class="btn" type="button">Получить код</button>
+                <div id="auth-code-row" class="auth-code-row" hidden>
+                  <input id="auth-code" class="auth-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из SMS" aria-label="Одноразовый код">
+                  <button id="btn-auth-verify" class="btn primary" type="button">Войти</button>
+                </div>
+              </div>
+              <div id="auth-user" class="auth-user" hidden>
+                <span id="auth-phone-saved"></span>
+                <button id="btn-auth-logout" class="btn ghost" type="button">Выйти</button>
+              </div>
+            </div>
+            <button id="btn-start" class="btn primary" type="button" disabled>Играть</button>
+            <div id="hint-once" class="hint">Подсказка: свайпни влево или вправо</div>
+          </div>
+        </div>
+
+        <!-- RESULT -->
+        <div id="screen-win" class="overlay">
+          <div class="modal">
+            <h2 id="win-title">Финиш!</h2>
+            <p id="win-result">Ты собрал 0 товаров и 0 монет.</p>
+            <div id="win-stats" class="result-stats"></div>
+            <div id="win-next-prize" class="result-next-prize"></div>
+
+            <div class="stack-row">
+              <button id="btn-open-prizes-win" class="btn primary" type="button">Призы</button>
+              <button id="btn-replay-win" class="btn ghost" type="button">Играть ещё раз</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOSE -->
+        <div id="screen-lose" class="overlay">
+          <div class="modal">
+            <h2>Финиш!</h2>
+            <p id="lose-result" class="muted">Ты собрал 0 товаров и 0 монет.</p>
+            <div id="lose-stats" class="result-stats"></div>
+            <div id="lose-next-prize" class="result-next-prize"></div>
+            <div class="stack-row">
+              <button id="btn-open-prizes-lose" class="btn" type="button">Призы</button>
+              <button id="btn-replay-lose" class="btn primary" type="button">Играть ещё раз</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-note">Управление: свайпы влево/вправо</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #bikegame-root{
+    --ui-gap: 12px;
+    --ui-gap-sm: 10px;
+    --ui-radius: 18px;
+    --ui-radius-sm: 14px;
+    --ui-border: 1px solid rgba(0,0,0,0.12);
+    --ui-border-strong: 1px solid rgba(0,0,0,0.18);
+    --ui-text: #111;
+    --ui-bg: #fff;
+    --ui-muted: 0.78;
+    --ui-focus: 2px solid #111;
+    --ui-ease: cubic-bezier(.2,.8,.2,1);
+    --ui-dur: 220ms;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+
+  #bikegame-root * { box-sizing: border-box; }
+  #bikegame-root, #bikegame-root *{ -webkit-user-select:none; user-select:none; }
+
+  .bg-wrap { width: 100%; max-width: 520px; margin: 0 auto; padding: var(--ui-gap); padding-bottom: calc(var(--ui-gap) + env(safe-area-inset-bottom)); }
+  .bg-card { max-width: 520px; margin: 24px auto; padding: 18px; border-radius: 16px; border: var(--ui-border); background: var(--ui-bg); }
+  .bg-card h2 { margin: 0 0 10px; font-size: 20px; }
+  .bg-card p { margin: 0; opacity: 0.75; }
+
+  .hud { display: flex; justify-content: space-between; gap: var(--ui-gap-sm); align-items: center;
+         padding: 10px 12px; border-radius: var(--ui-radius-sm); border: var(--ui-border); background: var(--ui-bg); }
+  .hud-left { display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; }
+  .hud-label { font-size: 12px; opacity: 0.7; margin-right: 0; }
+  .hud-value { font-weight: 700; font-size: 14px; }
+  .hud-time-label{ margin-left: 4px; }
+  .hud-time{ min-width: 22px; text-align: left; }
+  .hud-right { display:flex; align-items:center; gap:10px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .hud-btn{ min-height: 34px; padding: 6px 10px; font-size: 13px; }
+
+  .coin-icon{
+    display:inline-block;
+    width:18px;
+    height:18px;
+    object-fit:contain;
+    vertical-align:-3px;
+    flex:0 0 auto;
+  }
+
+  .hud-coin-group{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    line-height:1;
+  }
+
+  .hud-coin-icon{
+    width:19px;
+    height:19px;
+  }
+
+  .sound-btn{
+    appearance:none;
+    border: var(--ui-border-strong);
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    border-radius: 12px;
+    padding: 6px 10px;
+    cursor: pointer;
+    line-height: 1;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .sound-btn svg{ width:18px; height:18px; display:block; }
+  .sound-btn:active{ transform: translateY(1px); }
+  .sound-btn.muted{ opacity: 0.55; }
+
+  .stage { position: relative; margin-top: var(--ui-gap-sm); border-radius: var(--ui-radius); overflow: hidden;
+           border: var(--ui-border); touch-action: none; height: min(70vh, 560px); background: #f7f7f7; }
+  canvas { width: 100%; height: 100%; display: block; }
+
+  .overlay { position: absolute; inset: 0; display: none; place-items: center; background: rgba(255,255,255,0.78); backdrop-filter: blur(6px); padding: 14px; }
+  .overlay.show { display: grid; animation: overlayIn var(--ui-dur) var(--ui-ease) both; }
+  .overlay.show .modal{ animation: modalIn var(--ui-dur) var(--ui-ease) both; }
+
+  @keyframes overlayIn{ from{opacity:0;} to{opacity:1;} }
+  @keyframes modalIn{ from{opacity:0; transform: translateY(10px) scale(0.98);} to{opacity:1; transform: translateY(0) scale(1);} }
+
+  .modal { width: 100%; max-width: 420px; padding: 16px; border-radius: var(--ui-radius);
+           border: var(--ui-border); background: rgba(255,255,255,0.95); }
+
+  .modal :where(h2, p, .row, .btn, .hint, .promo){ margin: 0; }
+  .modal :where(.muted){ opacity: var(--ui-muted); }
+  .modal :where(.promo){ font-size: 16px; }
+  .modal :where(.promo b){ display:inline-block; }
+
+  .modal > * + *{ margin-top: 10px; }
+  .modal > .row,
+  .modal > #btn-replay-win{ margin-top: var(--ui-gap); }
+
+  .btn { appearance: none; border: var(--ui-border-strong); background: var(--ui-bg); color: var(--ui-text);
+         padding: 10px 12px; border-radius: var(--ui-radius-sm); font-weight: 700; font-size: 14px;
+         text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+         min-height: 42px; cursor: pointer; min-width: 0; }
+  .btn.primary { background: #111; color: #fff; border-color: #111; }
+  .btn.ghost { background: transparent; }
+  .btn:active { transform: translateY(1px); }
+  .btn[disabled]{ opacity:0.6; cursor:not-allowed; transform:none; }
+
+  .hud .hud-btn,
+  .hud .sound-btn{
+    width: 66px;
+    min-width: 66px;
+    min-height: 42px;
+    padding: 8px 10px;
+    border-radius: var(--ui-radius-sm);
+  }
+
+  .row { display:flex; gap: var(--ui-gap-sm); flex-wrap: wrap; }
+  .hint { font-size: 12px; opacity: 0.7; }
+  .footer-note { margin-top: var(--ui-gap-sm); font-size: 12px; opacity: 0.65; text-align: center; }
+
+  .sound-btn:focus-visible, .btn:focus-visible, a.btn:focus-visible{ outline: var(--ui-focus); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .overlay.show{ animation:none !important; }
+    .overlay.show .modal{ animation:none !important; }
+  }
+
+  /* WIN layout */
+  #screen-win .row{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--ui-gap-sm);
+    align-items: stretch;
+  }
+  #screen-win .row > .btn, #screen-win .row > a.btn{ width: 100%; }
+  #screen-win #btn-replay-win{ width: 100%; }
+
+  @media (max-width: 380px){
+    #screen-win .row{ grid-template-columns: 1fr; }
+    #screen-win #btn-cta{ order: 1; }
+
+  }
+
+  /* LOSE layout */
+  #screen-lose .row{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--ui-gap-sm);
+  }
+  #screen-lose .row > .btn{ width: 100%; }
+  @media (max-width: 380px){
+    #screen-lose .row{ grid-template-columns: 1fr; }
+  }
+
+  .prizes-grid{
+    touch-action: pan-y;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:12px;
+    margin-top:12px;
+    max-height:min(35vh, 250px);
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right:2px;
+    scrollbar-gutter: stable;
+  }
+
+  @media (min-height: 760px) and (min-width: 390px){
+    .prizes-grid{ max-height:min(48vh, 390px); }
+  }
+
+  @media (min-height: 860px) and (min-width: 410px){
+    .prizes-grid{ max-height:min(58vh, 520px); }
+  }
+
+  .prize-card{
+    border:1px solid rgba(0,0,0,0.12);
+    border-radius:16px;
+    padding:12px;
+    background:#fff;
+    min-height: 110px;
+  }
+
+  .prize-card.opened{
+    background:rgba(255,255,255,0.98);
+    border-color:rgba(0,0,0,0.18);
+  }
+
+  .prize-card-top{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+
+  .prize-title{
+    font-weight:700;
+    font-size:15px;
+  }
+
+  .prize-cost{
+    font-weight:700;
+    white-space:nowrap;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+
+  .prize-coin-icon{
+    width:20px;
+    height:20px;
+  }
+
+  .button-coin-icon{
+    width:18px;
+    height:18px;
+    margin:0 2px;
+    vertical-align:-4px;
+  }
+
+  .prize-desc{
+    font-size:13px;
+    opacity:.82;
+    margin-bottom:10px;
+  }
+
+  .prize-meta{
+    display:block;
+    font-size:12px;
+    opacity:.68;
+    margin-top:6px;
+  }
+
+  .rarity-badge{ display:none !important;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:24px;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    border:1px solid rgba(0,0,0,0.12);
+    white-space:nowrap;
+  }
+
+  .rarity-common{ background:#f3f4f6; color:#111; }
+  .rarity-rare{ background:#e8f1ff; color:#163b77; }
+  .rarity-epic{ background:#f4e8ff; color:#5f1e88; }
+  .rarity-legendary{ background:#fff2cf; color:#8a4b00; }
+
+  .prize-card.rarity-common{ box-shadow: inset 0 0 0 1px rgba(0,0,0,0.03); }
+  .prize-card.rarity-rare{ background:linear-gradient(180deg, rgba(232,241,255,0.95), rgba(255,255,255,0.98)); }
+  .prize-card.rarity-epic{ background:linear-gradient(180deg, rgba(244,232,255,0.95), rgba(255,255,255,0.98)); }
+  .prize-card.rarity-legendary{ background:linear-gradient(180deg, rgba(255,242,207,0.96), rgba(255,255,255,0.99)); }
+
+  .prize-card.opened{ box-shadow: 0 10px 24px rgba(0,0,0,0.06); }
+
+  .prize-card-top-left{ display:grid; gap:6px; }
+
+  .prize-open-overlay{
+    display:grid;
+    place-items:center;
+    gap:14px;
+    text-align:center;
+  }
+
+  .prize-open-card{
+    width:min(78vw, 280px);
+    aspect-ratio: 3 / 4;
+    border-radius:24px;
+    border:1px solid rgba(0,0,0,0.12);
+    background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,245,245,0.98));
+    box-shadow:0 18px 48px rgba(0,0,0,0.14);
+    position:relative;
+    overflow:hidden;
+    display:grid;
+    place-items:center;
+    transform-style:preserve-3d;
+  }
+
+  .prize-open-card::before{
+    content:"";
+    position:absolute;
+    inset:-30%;
+    background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.88) 50%, transparent 70%);
+    transform:translateX(-120%) rotate(12deg);
+    animation:prizeShine 1.2s var(--ui-ease) infinite;
+  }
+
+  .prize-open-card::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:radial-gradient(circle at center, rgba(255,255,255,0.14), transparent 62%);
+  }
+
+  .prize-open-card.animating{
+    animation:prizeReveal 1.1s cubic-bezier(.18,.82,.18,1) both;
+  }
+
+  .prize-open-inner{ position:relative; z-index:1; display:grid; gap:10px; justify-items:center; padding:18px; }
+  .prize-open-icon{ font-size:42px; line-height:1; }
+  .prize-open-title{ font-size:20px; font-weight:800; }
+  .prize-open-sub{ font-size:13px; opacity:.76; }
+
+  @keyframes prizeReveal{
+    0%{ transform:scale(0.84) rotateY(0deg); filter:brightness(0.96); }
+    30%{ transform:scale(0.9) rotateY(90deg); filter:brightness(1); }
+    55%{ transform:scale(1.04) rotateY(180deg); filter:brightness(1.22); }
+    78%{ transform:scale(0.98) rotateY(354deg); }
+    100%{ transform:scale(1) rotateY(360deg); }
+  }
+
+  @keyframes prizeShine{
+    from{ transform:translateX(-120%) rotate(12deg); }
+    to{ transform:translateX(120%) rotate(12deg); }
+  }
+
+  #screen-prizes .modal,
+  #screen-prize-opening .modal,
+  #screen-prize-reward .modal{
+    max-width: 460px;
+  }
+
+  #screen-prizes .modal{
+    max-height:min(82vh, 680px);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .promo-box{
+    border:1px solid rgba(0,0,0,0.14);
+    border-radius:16px;
+    padding:14px 16px;
+    background:#fff;
+    font-weight:800;
+    font-size:22px;
+    letter-spacing:0.04em;
+    text-align:center;
+  }
+
+  .promo-box-full{
+    width:100%;
+    display:block;
+  }
+
+  .reward-timer-block{
+    display:grid;
+    gap:4px;
+    justify-items:center;
+    text-align:center;
+  }
+
+  .reward-timer-value{
+    font-size:15px;
+    font-weight:700;
+    opacity:0.9;
+  }
+
+  .stack-row{
+    display:grid;
+    gap:10px;
+  }
+
+  .stack-row > .btn,
+  .stack-row > a.btn{
+    width:100%;
+  }
+
+  .auth-box{
+    padding:12px;
+    border:1px solid rgba(0,0,0,0.12);
+    border-radius:16px;
+    background:rgba(255,255,255,0.96);
+  }
+
+  .auth-box[hidden]{
+    display:none !important;
+  }
+
+  .auth-title{
+    font-weight:800;
+    font-size:14px;
+    margin-bottom:6px;
+  }
+
+  .auth-status{
+    font-size:13px;
+    opacity:0.82;
+    line-height:1.35;
+    margin-bottom:10px;
+  }
+
+  .auth-form,
+  .auth-code-row{
+    display:grid;
+    gap:8px;
+  }
+
+  @media (min-width: 390px){
+    .auth-form,
+    .auth-code-row{
+      grid-template-columns:minmax(0, 1fr) auto;
+      align-items:center;
+    }
+
+    .auth-code-row{
+      grid-column:1 / -1;
+    }
+  }
+
+  .auth-code-row{
+    margin-top:8px;
+  }
+
+  .auth-input{
+    appearance:none;
+    width:100%;
+    min-height:42px;
+    border:var(--ui-border-strong);
+    border-radius:var(--ui-radius-sm);
+    background:#fff;
+    color:#111;
+    font:600 15px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:10px 12px;
+    -webkit-user-select:text;
+    user-select:text;
+  }
+
+  .auth-input:focus-visible{
+    outline:var(--ui-focus);
+    outline-offset:2px;
+  }
+
+  .auth-user{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+
+  .auth-user[hidden],
+  .auth-form[hidden],
+  .auth-code-row[hidden]{
+    display:none !important;
+  }
+
+  #auth-phone-saved{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-weight:800;
+    font-size:14px;
+  }
+
+  #screen-daily-popup{
+    background:rgba(0,0,0,0.18);
+    backdrop-filter:blur(10px);
+  }
+
+  #screen-daily-popup .modal{
+    max-width:330px;
+    border-radius:24px;
+    border:1px solid rgba(255,255,255,0.55);
+    background:rgba(255,255,255,0.92);
+    box-shadow:0 20px 60px rgba(0,0,0,0.22);
+    text-align:center;
+    padding:18px;
+  }
+
+  .daily-popup-icon{
+    width:54px;
+    height:54px;
+    margin:0 auto 8px;
+    border-radius:17px;
+    display:grid;
+    place-items:center;
+    background:linear-gradient(180deg, #fff6d7, #ffd766);
+    border:1px solid rgba(0,0,0,0.08);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 18px rgba(0,0,0,0.08);
+  }
+
+  .daily-coin-icon{
+    width:38px;
+    height:38px;
+  }
+
+  #screen-daily-popup.reward .daily-popup-icon{
+    animation: dailyRewardPop 900ms var(--ui-ease) both;
+  }
+
+  .daily-popup-title{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:0;
+  }
+
+  .daily-popup-text{
+    margin:6px 0 0;
+    font-size:14px;
+    line-height:1.35;
+    opacity:0.76;
+  }
+
+  .daily-popup-progress{
+    display:grid;
+    grid-template-columns:repeat(5, 1fr);
+    gap:7px;
+    margin-top:14px;
+  }
+
+  .daily-popup-cell{
+    min-height:40px;
+    border-radius:13px;
+    border:1px solid rgba(0,0,0,0.12);
+    background:rgba(0,0,0,0.045);
+    display:grid;
+    place-items:center;
+    font-size:13px;
+    font-weight:800;
+  }
+
+  .daily-popup-cell.filled{
+    background:#111;
+    border-color:#111;
+    color:#fff;
+  }
+
+  .daily-popup-cell.ready{
+    background:#fff4c7;
+    border-color:rgba(0,0,0,0.16);
+  }
+
+  .daily-cell-coin-icon{
+    width:22px;
+    height:22px;
+  }
+
+  .prizes-balance-line{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    flex-wrap:wrap;
+  }
+
+  .prizes-balance-icon{
+    width:19px;
+    height:19px;
+  }
+
+  .daily-popup-actions{
+    margin-top:16px;
+  }
+
+  .daily-popup-actions .btn{
+    width:100%;
+    border-radius:15px;
+  }
+
+  @keyframes dailyRewardPop{
+    0%{ transform:scale(0.86); filter:brightness(0.96); }
+    42%{ transform:scale(1.12); filter:brightness(1.12); }
+    68%{ transform:scale(0.96); }
+    100%{ transform:scale(1); }
+  }
+
+  .result-stats{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px;
+  }
+
+  .result-stat{
+    border:1px solid rgba(0,0,0,0.12);
+    border-radius:14px;
+    background:rgba(255,255,255,0.9);
+    padding:10px 8px;
+    text-align:center;
+  }
+
+  .result-stat-value{
+    display:block;
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
+  }
+
+  .result-stat-value-coin{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+
+  .result-coin-icon{
+    width:22px;
+    height:22px;
+  }
+
+  .result-stat-label{
+    display:block;
+    margin-top:5px;
+    font-size:11px;
+    opacity:0.68;
+  }
+
+  .result-next-prize{
+    border:1px solid rgba(0,0,0,0.12);
+    border-radius:14px;
+    background:#fff;
+    padding:10px 12px;
+    font-size:13px;
+    line-height:1.35;
+  }
+
+  .result-next-prize:empty{
+    display:none;
+  }
+
+  /* Debug badge */
+  #dbgBadge{
+    position:absolute;
+    left:10px;
+    bottom:10px;
+    z-index:5;
+    font: 700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;
+    color:#111;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(0,0,0,0.18);
+    border-radius: 12px;
+    padding: 6px 10px;
+    backdrop-filter: blur(6px);
+    display:none;
+    user-select:none;
+    pointer-events:none;
+    white-space: pre-line;
+  }
+</style>
+
+<script>
+(() => {
+  // ===== Config =====
+  const CTA_URL = "https://myspar.ru/";
+
+  const USE_SERVER_PROMO = false;
+  const PROMO_ENDPOINT = "/api/bikegame/promo";
+
+  const PROMO_TIERS = [
+    { min: 15, code: "ШИК15", title: "Супер!",   desc: "Скидка 15% от 3500₽ на самовывоз (кроме алкоголя и акций)" },
+    { min: 12, code: "ШИК12", title: "Отлично!", desc: "Скидка 12% от 2500₽ на самовывоз (кроме алкоголя и акций)" },
+    { min: 7,  code: "ШИК7",  title: "Хорошо!",  desc: "Скидка 7% от 1500₽ на самовывоз (кроме алкоголя и акций)" }
+  ];
+
+  const COINS_KEY = "bikegame_coins_v1";
+  const PRIZES_KEY = "bikegame_prizes_v1";
+  const DAILY_LOGIN_KEY = "bikegame_daily_login_v1";
+  const AUTH_TOKEN_KEY = "bikegame_auth_token_v1";
+  const AUTH_PHONE_KEY = "bikegame_auth_phone_v1";
+
+  const API_BASE_URL = "";
+  const AUTH_REQUEST_CODE_ENDPOINT = "/api/auth/request-code";
+  const AUTH_VERIFY_CODE_ENDPOINT = "/api/auth/verify-code";
+  const PLAYER_STATE_ENDPOINT = "/api/player/state";
+  const USE_MOCK_AUTH = false;
+  const MOCK_AUTH_PHONE = "+70000000000";
+  const MOCK_AUTH_CODE = "111111";
+  const PLAYER_SYNC_DEBOUNCE_MS = 700;
+  const AUTH_RESEND_COOLDOWN_SEC = 60;
+  const OTP_CODE_LENGTH = 6;
+  const DAILY_POPUP_SHOWN_KEY = "bikegame_daily_popup_shown_v1";
+
+  const COIN_SPAWN_MIN = 8.5;
+  const COIN_SPAWN_MAX = 14.0;
+  const PRIZE_CTA_URL = "https://myspar.ru/catalog";
+  const PRIZE_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+  const PRIZES = [
+    {
+      id: "prize1", // 1
+      title: "Суперприз",
+      cost: 5,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize2", // 2
+      title: "Суперприз",
+      cost: 6,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize3", // 3
+      title: "Суперприз",
+      cost: 7,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize4", // 4
+      title: "Суперприз",
+      cost: 8,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize5", // 5
+      title: "Суперприз",
+      cost: 9,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize6", // 6
+      title: "Суперприз",
+      cost: 10,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize7", // 7
+      title: "Суперприз",
+      cost: 11,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize8", // 8
+      title: "Суперприз",
+      cost: 12,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize9", // 9
+      title: "Суперприз",
+      cost: 13,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    },
+    {
+      id: "prize10", // 10
+      title: "Суперприз",
+      cost: 14,
+      headline: "Отличное предложение уже ждёт вас!",
+      subline: "Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду",
+      promoCode: "ВАУ33"
+    }
+  ];
+
+  const ASSET_DIR = "./assets/";
+  const ASSETS = {
+    courierAnimated: `${ASSET_DIR}courier.gif`,
+    courierFrames: Array.from({ length: 8 }, (_, index) => `${ASSET_DIR}courier/${index + 1}.png`),
+    courier: `${ASSET_DIR}courier.png`,
+    road: `${ASSET_DIR}road_bg.png`,
+    obstacles: [
+      `${ASSET_DIR}obstacle.png`,
+      `${ASSET_DIR}obstacle_1.png`
+    ],
+    products: [
+      `${ASSET_DIR}product_1.png`,
+      `${ASSET_DIR}product_2.png`,
+      `${ASSET_DIR}product_3.png`,
+      `${ASSET_DIR}product_4.png`,
+      `${ASSET_DIR}product_5.png`
+    ],
+    life: `${ASSET_DIR}life.png`,
+    bonus: `${ASSET_DIR}bonus.png`,
+    coin: `${ASSET_DIR}coin.png`
+  };
+
+  function coinIconHTML(extraClass = ""){
+    const cls = extraClass ? `coin-icon ${extraClass}` : "coin-icon";
+    return `<img class="${cls}" src="${ASSETS.coin}" alt="" aria-hidden="true">`;
+  }
+
+  const MOBILE_MAX_WIDTH = 768;
+  const LANE_X_FRACTIONS = [0.335, 0.665];
+  const LANES = LANE_X_FRACTIONS.length;
+  const LIVES_START = 3;
+
+  const PRODUCT_SPAWN_MIN = 0.90;
+  const PRODUCT_SPAWN_MAX = 1.40;
+  const OBSTACLE_SPAWN_MIN = 1.10;
+  const OBSTACLE_SPAWN_MAX = 1.70;
+
+  const BASE_SPEED_PX_PER_SEC = 260;
+  const RUN_DURATION_SEC = 45;
+  const OBSTACLE_GRACE_SEC = 3.0;
+
+  const DIFF_PER_PRODUCT = 0.045;
+  const DIFF_MAX = 2.8;
+
+  const MAX_OBSTACLES_SAME_BAND = 1;
+  const BAND_WINDOW_SEC = 0.55;
+  const LANE_SMOOTH = 14;
+
+  const SPAWN_SAFE_GAP_Y = 170;
+
+  // ✅ NEW: редкие бонусы
+  const LIFE_SPAWN_MIN = 9.0;
+  const LIFE_SPAWN_MAX = 14.0;
+  const BONUS_SPAWN_MIN = 8.0;
+  const BONUS_SPAWN_MAX = 13.0;
+
+  const FIXED_DT = 1/120;
+  const MAX_STEPS_PER_FRAME = 8;
+  const MAX_FRAME_DT = 0.10;
+
+  const SOUND_KEY = "bikegame_sound_enabled";
+  const TUTORIAL_KEY = "bikegame_tutorial_seen_v1";
+
+  function safeGetLS(key){ try { return localStorage.getItem(key); } catch(_) { return null; } }
+  function safeSetLS(key, val){ try { localStorage.setItem(key, val); } catch(_) {} }
+
+  function readParamFromSearchAndHash(name){
+    try {
+      const searchValue = new URLSearchParams(window.location.search).get(name);
+      if (searchValue) return searchValue;
+      const hash = String(window.location.hash || "").replace(/^#/, "");
+      return new URLSearchParams(hash).get(name) || "";
+    } catch(_) {
+      return "";
+    }
+  }
+
+  function getInitialAppAuth(){
+    const injected = window.BIKEGAME_APP_AUTH && typeof window.BIKEGAME_APP_AUTH === "object"
+      ? window.BIKEGAME_APP_AUTH
+      : {};
+    const token = String(
+      window.BIKEGAME_APP_TOKEN ||
+      injected.token ||
+      readParamFromSearchAndHash("token") ||
+      readParamFromSearchAndHash("authToken") ||
+      readParamFromSearchAndHash("appToken") ||
+      readParamFromSearchAndHash("bikegameToken") ||
+      ""
+    ).trim();
+    const userId = String(
+      window.BIKEGAME_APP_USER_ID ||
+      injected.userId ||
+      injected.accountId ||
+      readParamFromSearchAndHash("userId") ||
+      readParamFromSearchAndHash("accountId") ||
+      ""
+    ).trim();
+    const label = String(
+      injected.label ||
+      injected.phone ||
+      readParamFromSearchAndHash("phone") ||
+      userId ||
+      ""
+    ).trim();
+    return { token, userId, label };
+  }
+
+  let appAuth = getInitialAppAuth();
+  let isAppAuthMode = !!appAuth.token;
+  let authToken = appAuth.token || safeGetLS(AUTH_TOKEN_KEY) || "";
+  let authPhone = appAuth.label || appAuth.userId || safeGetLS(AUTH_PHONE_KEY) || "";
+  let remoteSyncReady = false;
+  let remoteSyncTimer = 0;
+  let remoteSyncInFlight = false;
+  let remoteSyncQueued = false;
+  let suppressRemoteSync = false;
+  let authCooldownTimer = 0;
+  let authCooldownLeft = 0;
+
+  function trackGameEvent(name, details = {}){
+    const payload = {
+      event: name,
+      phone: authPhone || "",
+      signedIn: !!authToken,
+      ts: Date.now(),
+      ...details
+    };
+
+    try {
+      window.dispatchEvent(new CustomEvent("bikegame:event", { detail: payload }));
+    } catch(_) {}
+
+    if (typeof window.bikegameTrack === "function") {
+      try { window.bikegameTrack(name, payload); } catch(_) {}
+    }
+  }
+
+  function makeRunId(){
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    return `run_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+
+  function makeMockToken(phone){
+    return `mock.${btoa(unescape(encodeURIComponent(phone))).replace(/=+$/,"")}.${Date.now()}`;
+  }
+
+  function isMockAuthCredentials(phone, code){
+    return USE_MOCK_AUTH && phone === MOCK_AUTH_PHONE && code === MOCK_AUTH_CODE;
+  }
+
+  function getApiUrl(path){
+    if (/^https?:\/\//i.test(path)) return path;
+    return `${API_BASE_URL}${path}`;
+  }
+
+  function normalizePhone(value){
+    const raw = String(value || "").trim();
+    const plus = raw.startsWith("+") ? "+" : "";
+    return plus + raw.replace(/[^\d]/g, "");
+  }
+
+  function formatPhoneForInput(value){
+    let digits = String(value || "").replace(/[^\d]/g, "");
+    if (digits.startsWith("8")) digits = "7" + digits.slice(1);
+    if (!digits.startsWith("7")) digits = "7" + digits;
+    digits = digits.slice(0, 11);
+
+    const p1 = digits.slice(1, 4);
+    const p2 = digits.slice(4, 7);
+    const p3 = digits.slice(7, 9);
+    const p4 = digits.slice(9, 11);
+    let out = "+7";
+    if (p1) out += ` ${p1}`;
+    if (p2) out += ` ${p2}`;
+    if (p3) out += `-${p3}`;
+    if (p4) out += `-${p4}`;
+    return out;
+  }
+
+  function formatAuthLabel(value){
+    const raw = String(value || "").trim();
+    const digits = raw.replace(/[^\d]/g, "");
+    if (digits.length >= 10 && digits.length <= 11) return formatPhoneForInput(raw);
+    return raw || "Аккаунт приложения";
+  }
+
+  function updateAuthCodeButton(){
+    if (!btnAuthCode) return;
+    if (authCooldownLeft > 0) {
+      btnAuthCode.disabled = true;
+      btnAuthCode.textContent = `Повтор ${authCooldownLeft}`;
+      return;
+    }
+    btnAuthCode.disabled = false;
+    btnAuthCode.textContent = "Получить код";
+  }
+
+  function startAuthCooldown(){
+    clearInterval(authCooldownTimer);
+    authCooldownLeft = AUTH_RESEND_COOLDOWN_SEC;
+    updateAuthCodeButton();
+    authCooldownTimer = window.setInterval(() => {
+      authCooldownLeft = Math.max(0, authCooldownLeft - 1);
+      updateAuthCodeButton();
+      if (authCooldownLeft <= 0) {
+        clearInterval(authCooldownTimer);
+        authCooldownTimer = 0;
+      }
+    }, 1000);
+  }
+
+  function normalizeDailyLoginState(raw){
+    const state = raw && typeof raw === "object" ? raw : {};
+    return {
+      streak: Math.max(0, state.streak | 0),
+      lastDate: typeof state.lastDate === "string" ? state.lastDate : "",
+      lastRewardDate: typeof state.lastRewardDate === "string" ? state.lastRewardDate : ""
+    };
+  }
+
+  function getLocalPlayerStateSnapshot(){
+    return {
+      coins: loadCoins(),
+      openedPrizes: loadOpenedPrizes(),
+      dailyLoginState: loadDailyLoginState()
+    };
+  }
+
+  function getCurrentPlayerState(){
+    return {
+      coins: Math.max(0, totalCoins | 0),
+      openedPrizes: openedPrizes && typeof openedPrizes === "object" ? openedPrizes : {},
+      dailyLoginState: loadDailyLoginState()
+    };
+  }
+
+  function extractPlayerState(payload){
+    const src = payload && typeof payload === "object" && payload.state && typeof payload.state === "object"
+      ? payload.state
+      : (payload && typeof payload === "object" ? payload : {});
+
+    return {
+      coins: Math.max(0, Number(src.coins || 0) | 0),
+      openedPrizes: src.openedPrizes && typeof src.openedPrizes === "object" && !Array.isArray(src.openedPrizes)
+        ? src.openedPrizes
+        : {},
+      dailyLoginState: normalizeDailyLoginState(src.dailyLoginState)
+    };
+  }
+
+  function pickDailyLoginState(a, b){
+    const da = normalizeDailyLoginState(a);
+    const db = normalizeDailyLoginState(b);
+    const aKey = `${da.lastDate || ""}|${da.lastRewardDate || ""}`;
+    const bKey = `${db.lastDate || ""}|${db.lastRewardDate || ""}`;
+    return bKey > aKey ? db : da;
+  }
+
+  function mergePlayerStates(remoteState, localState){
+    const remote = extractPlayerState(remoteState);
+    const local = extractPlayerState(localState);
+    const opened = { ...remote.openedPrizes };
+
+    Object.keys(local.openedPrizes).forEach(prizeId => {
+      opened[prizeId] = Math.max(Number(opened[prizeId] || 0), Number(local.openedPrizes[prizeId] || 0));
+    });
+
+    return {
+      coins: Math.max(remote.coins, local.coins),
+      openedPrizes: opened,
+      dailyLoginState: pickDailyLoginState(remote.dailyLoginState, local.dailyLoginState)
+    };
+  }
+
+  function applyPlayerState(state){
+    const next = extractPlayerState(state);
+    suppressRemoteSync = true;
+    totalCoins = next.coins;
+    openedPrizes = next.openedPrizes;
+    saveCoins(totalCoins);
+    saveOpenedPrizes(openedPrizes);
+    saveDailyLoginState(next.dailyLoginState);
+    suppressRemoteSync = false;
+  }
+
+  async function apiRequest(path, options = {}){
+    const headers = {
+      "Accept": "application/json"
+    };
+    const init = {
+      method: options.method || "GET",
+      headers
+    };
+
+    if (options.auth !== false && authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
+
+    if (options.body !== undefined) {
+      headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify(options.body);
+    }
+
+    const response = await fetch(getApiUrl(path), init);
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
+
+    if (!response.ok) {
+      const message = data && data.message ? data.message : "server_error";
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  function setAuthStatus(text){
+    if (authStatusEl) authStatusEl.textContent = text;
+  }
+
+  function setAuthBusy(isBusy){
+    if (btnAuthCode) btnAuthCode.disabled = !!isBusy || authCooldownLeft > 0;
+    if (btnAuthVerify) btnAuthVerify.disabled = !!isBusy;
+  }
+
+  function renderAuthUI(){
+    const signedIn = !!authToken;
+
+    if (authBoxEl) authBoxEl.hidden = isAppAuthMode;
+
+    if (!isAppAuthMode && authPhoneInput && authPhone && !authPhoneInput.value) {
+      authPhoneInput.value = formatPhoneForInput(authPhone);
+    }
+    if (authFormEl) authFormEl.hidden = signedIn;
+    if (authUserEl) authUserEl.hidden = !signedIn;
+    if (authPhoneSavedEl) authPhoneSavedEl.textContent = formatAuthLabel(authPhone);
+    updateAuthCodeButton();
+
+    if (isAppAuthMode) {
+      setAuthStatus(remoteSyncReady ? "Прогресс сохраняется в аккаунте приложения." : "Подключаем аккаунт приложения…");
+      return;
+    }
+
+    if (signedIn) {
+      setAuthStatus(remoteSyncReady ? "Прогресс сохраняется на аккаунте." : "Вход выполнен. Сервер пока недоступен, локальная копия сохранена.");
+    } else if (location.protocol === "file:") {
+      setAuthStatus("Вход заработает после размещения файла на сайте с API. Сейчас прогресс сохраняется локально.");
+    } else {
+      setAuthStatus("Можно играть без входа. Для сохранения на разных устройствах войди по телефону.");
+    }
+  }
+
+  async function requestAuthCode(){
+    if (authCooldownLeft > 0) return;
+    const phone = normalizePhone(authPhoneInput ? authPhoneInput.value : "");
+    if (phone.length < 10) {
+      setAuthStatus("Введи номер телефона.");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthStatus("Отправляем код…");
+
+    try {
+      if (!USE_MOCK_AUTH || phone !== MOCK_AUTH_PHONE) {
+        await apiRequest(AUTH_REQUEST_CODE_ENDPOINT, {
+          method: "POST",
+          auth: false,
+          body: { phone }
+        });
+      }
+      authPhone = phone;
+      safeSetLS(AUTH_PHONE_KEY, authPhone);
+      if (authCodeRowEl) authCodeRowEl.hidden = false;
+      if (authCodeInput) authCodeInput.focus();
+      startAuthCooldown();
+      trackGameEvent("auth_code_requested");
+      setAuthStatus(USE_MOCK_AUTH && phone === MOCK_AUTH_PHONE ? "Тестовый код: 111111." : "Код отправлен. Введи его ниже.");
+    } catch(_) {
+      setAuthStatus("Не удалось отправить код. Проверь API авторизации.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function verifyAuthCode(){
+    const phone = normalizePhone(authPhoneInput ? authPhoneInput.value : authPhone);
+    const code = String(authCodeInput ? authCodeInput.value : "").replace(/[^\d]/g, "").slice(0, OTP_CODE_LENGTH);
+
+    if (phone.length < 10 || code.length < 3) {
+      setAuthStatus("Введи телефон и код.");
+      return;
+    }
+
+    setAuthBusy(true);
+    setAuthStatus("Проверяем код…");
+
+    try {
+      const localSnapshot = getCurrentPlayerState();
+      const result = isMockAuthCredentials(phone, code)
+        ? { token: makeMockToken(phone), state: localSnapshot }
+        : await apiRequest(AUTH_VERIFY_CODE_ENDPOINT, {
+            method: "POST",
+            auth: false,
+            body: { phone, code }
+          });
+      const token = result.token || result.accessToken || "";
+      if (!token) throw new Error("missing_token");
+
+      authToken = token;
+      authPhone = phone;
+      safeSetLS(AUTH_TOKEN_KEY, authToken);
+      safeSetLS(AUTH_PHONE_KEY, authPhone);
+      if (authCodeInput) authCodeInput.value = "";
+      if (authCodeRowEl) authCodeRowEl.hidden = true;
+
+      if (result.state || result.coins !== undefined || result.openedPrizes || result.dailyLoginState) {
+        applyPlayerState(mergePlayerStates(result, localSnapshot));
+        cleanupExpiredPrizes();
+        remoteSyncReady = true;
+        queuePlayerSync("verify-state");
+      } else {
+        await loadRemotePlayerState(localSnapshot);
+      }
+
+      dailyLoginResult = applyDailyLoginReward();
+      renderDailyLoginStatus(dailyLoginResult);
+      setHUD(lives, products, getDisplayCoins());
+      renderAuthUI();
+      queuePlayerSync("login");
+      trackGameEvent("auth_verified");
+    } catch(_) {
+      setAuthStatus("Код не подошёл или сервер недоступен.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  function logoutPlayer(){
+    if (isAppAuthMode) return;
+    authToken = "";
+    authPhone = "";
+    remoteSyncReady = false;
+    safeSetLS(AUTH_TOKEN_KEY, "");
+    safeSetLS(AUTH_PHONE_KEY, "");
+    if (authCodeRowEl) authCodeRowEl.hidden = true;
+    if (authPhoneInput) authPhoneInput.value = "";
+    if (authCodeInput) authCodeInput.value = "";
+    renderAuthUI();
+    trackGameEvent("auth_logout");
+  }
+
+  async function loadRemotePlayerState(localSnapshot = getLocalPlayerStateSnapshot()){
+    if (!authToken) return false;
+    if (authToken.startsWith("mock.")) {
+      applyPlayerState(localSnapshot);
+      remoteSyncReady = true;
+      setHUD(lives, products, getDisplayCoins());
+      renderAuthUI();
+      return true;
+    }
+
+    try {
+      const remotePayload = await apiRequest(PLAYER_STATE_ENDPOINT, { method: "GET" });
+      const merged = mergePlayerStates(remotePayload, localSnapshot);
+      applyPlayerState(merged);
+      cleanupExpiredPrizes();
+      remoteSyncReady = true;
+      setHUD(lives, products, getDisplayCoins());
+      renderAuthUI();
+      queuePlayerSync("merge");
+      return true;
+    } catch(_) {
+      remoteSyncReady = false;
+      setAuthStatus("Не удалось загрузить прогресс с сервера. Пока используем локальное сохранение.");
+      return false;
+    }
+  }
+
+  function queuePlayerSync(){
+    if (suppressRemoteSync || !authToken || !remoteSyncReady) return;
+    clearTimeout(remoteSyncTimer);
+    remoteSyncTimer = window.setTimeout(syncPlayerStateNow, PLAYER_SYNC_DEBOUNCE_MS);
+  }
+
+  async function syncPlayerStateNow(){
+    if (suppressRemoteSync || !authToken || !remoteSyncReady) return;
+    if (authToken.startsWith("mock.")) {
+      setAuthStatus("Тестовый режим: прогресс сохранён локально.");
+      return;
+    }
+
+    if (remoteSyncInFlight) {
+      remoteSyncQueued = true;
+      return;
+    }
+
+    remoteSyncInFlight = true;
+    remoteSyncQueued = false;
+
+    try {
+      await apiRequest(PLAYER_STATE_ENDPOINT, {
+        method: "POST",
+        body: {
+          phone: authPhone,
+          appUserId: isAppAuthMode ? appAuth.userId : "",
+          ...getCurrentPlayerState()
+        }
+      });
+      setAuthStatus(isAppAuthMode ? "Прогресс сохранён в аккаунте приложения." : "Прогресс сохранён на аккаунте.");
+    } catch(_) {
+      setAuthStatus("Не удалось сохранить прогресс на сервере. Локальная копия сохранена.");
+    } finally {
+      remoteSyncInFlight = false;
+      if (remoteSyncQueued) queuePlayerSync("queued");
+    }
+  }
+
+  async function setAppAuth(auth = {}){
+    const token = String(auth.token || auth.authToken || auth.appToken || "").trim();
+    if (!token) return false;
+
+    appAuth = {
+      token,
+      userId: String(auth.userId || auth.accountId || "").trim(),
+      label: String(auth.label || auth.phone || auth.userId || auth.accountId || "Аккаунт приложения").trim()
+    };
+    isAppAuthMode = true;
+    authToken = appAuth.token;
+    authPhone = appAuth.label || appAuth.userId || "Аккаунт приложения";
+    remoteSyncReady = false;
+    renderAuthUI();
+    await loadRemotePlayerState(getLocalPlayerStateSnapshot());
+    dailyLoginResult = applyDailyLoginReward();
+    renderDailyLoginStatus(dailyLoginResult);
+    setHUD(lives, products, getDisplayCoins());
+    renderAuthUI();
+    queuePlayerSync("app-auth");
+    trackGameEvent("app_auth_connected", { appUserId: appAuth.userId });
+    return true;
+  }
+
+  window.bikegameSetAppAuth = setAppAuth;
+
+
+  function getLocalDateKey(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function shiftDateKey(dateKey, diffDays) {
+    const parts = String(dateKey).split("-").map(Number);
+    if (parts.length !== 3) return "";
+    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + diffDays);
+    return getLocalDateKey(d);
+  }
+
+  function loadDailyLoginState(){
+    try {
+      const raw = localStorage.getItem(DAILY_LOGIN_KEY);
+      const parsed = JSON.parse(raw || "{}");
+      return {
+        streak: Math.max(0, parsed.streak | 0),
+        lastDate: typeof parsed.lastDate === "string" ? parsed.lastDate : "",
+        lastRewardDate: typeof parsed.lastRewardDate === "string" ? parsed.lastRewardDate : ""
+      };
+    } catch(_) {
+      return { streak: 0, lastDate: "", lastRewardDate: "" };
+    }
+  }
+
+  function saveDailyLoginState(state){
+    try {
+      localStorage.setItem(DAILY_LOGIN_KEY, JSON.stringify({
+        streak: Math.max(0, state.streak | 0),
+        lastDate: state.lastDate || "",
+        lastRewardDate: state.lastRewardDate || ""
+      }));
+    } catch(_) {}
+    queuePlayerSync("daily-login");
+  }
+
+  function applyDailyLoginReward(){
+    const today = getLocalDateKey();
+    const state = loadDailyLoginState();
+
+    if (state.lastDate === today) {
+      return {
+        streak: state.streak,
+        rewardedToday: state.lastRewardDate === today,
+        rewardGranted: false,
+        reset: false,
+        sameDay: true
+      };
+    }
+
+    let streak = 1;
+    let reset = false;
+    const yesterday = shiftDateKey(today, -1);
+
+    if (!state.lastDate) {
+      streak = 1;
+    } else if (state.lastDate === yesterday) {
+      streak = Math.max(0, state.streak) + 1;
+    } else {
+      streak = 1;
+      reset = true;
+    }
+
+    let rewardGranted = false;
+    let lastRewardDate = state.lastRewardDate || "";
+
+    if (streak >= 5 && lastRewardDate !== today) {
+      totalCoins += 1;
+      saveCoins(totalCoins);
+      rewardGranted = true;
+      lastRewardDate = today;
+      streak = 0;
+    }
+
+    saveDailyLoginState({ streak, lastDate: today, lastRewardDate });
+
+    return {
+      streak,
+      rewardedToday: rewardGranted,
+      rewardGranted,
+      reset,
+      sameDay: false
+    };
+  }
+
+  function renderDailyLoginStatus(result){
+    if (!dailyLoginTextEl) return;
+
+    const streak = Math.max(0, Math.min(5, (result.rewardGranted || result.rewardedToday) ? 5 : (result.streak || 0)));
+    if (dailyLoginProgressEl) {
+      const cells = Array.from(dailyLoginProgressEl.querySelectorAll('.daily-cell'));
+      cells.forEach((cell, index) => {
+        cell.classList.remove('filled', 'ready');
+        if (index < Math.min(streak, 4)) cell.classList.add('filled');
+      });
+      const rewardCell = cells[4];
+      if (rewardCell) {
+        if (result.rewardGranted || result.rewardedToday) rewardCell.classList.add('filled');
+        else if ((result.streak || 0) === 4) rewardCell.classList.add('ready');
+      }
+    }
+
+    if (result.rewardGranted) {
+      dailyLoginTextEl.textContent = "Ты заходил 5 дней подряд и получил 1 монету. Новая серия начнётся завтра.";
+      return;
+    }
+    if (result.rewardedToday) {
+      dailyLoginTextEl.textContent = "Награда за 5 дней уже получена сегодня. Новая серия начнётся завтра.";
+      return;
+    }
+    if (result.sameDay) {
+      const dayNum = Math.max(1, result.streak || 1);
+      const left = Math.max(0, 5 - dayNum);
+      dailyLoginTextEl.textContent = left > 0
+        ? `Сегодня вход уже засчитан. Сейчас день ${dayNum} из 5. До награды остался ${left}.`
+        : "Сегодня вход уже засчитан.";
+      return;
+    }
+    if (result.reset) {
+      dailyLoginTextEl.textContent = "Ты пропустил день, поэтому серия началась заново. Сегодня день 1 из 5.";
+      return;
+    }
+    const dayNum = Math.max(1, result.streak || 1);
+    const left = Math.max(0, 5 - dayNum);
+    dailyLoginTextEl.textContent = `Сегодня день ${dayNum} из 5. До награды осталось ${left}.`;
+  }
+
+  function getDailyLoginPopupCopy(result){
+    if (result && result.rewardGranted) {
+      return {
+        title: "Монета начислена",
+        text: "Ты заходил 5 дней подряд и получил 1 монету. Новая серия начнётся завтра.",
+        streak: 5,
+        cta: "Забрать"
+      };
+    }
+
+    if (result && result.rewardedToday) {
+      return {
+        title: "Награда уже получена",
+        text: "Сегодняшняя награда за 5 дней уже на твоём балансе.",
+        streak: 5,
+        cta: "Понятно"
+      };
+    }
+
+    if (result && result.reset) {
+      return {
+        title: "Новая серия",
+        text: "День пропущен, поэтому серия началась заново. Сегодня день 1 из 5.",
+        streak: 1,
+        cta: "Понятно"
+      };
+    }
+
+    const dayNum = Math.max(1, (result && result.streak) || 1);
+    const left = Math.max(0, 5 - dayNum);
+    return {
+      title: "Ежедневный вход",
+      text: left > 0
+        ? `Сегодня день ${dayNum} из 5. До монеты осталось ${left}.`
+        : "Сегодня вход засчитан.",
+      streak: Math.min(5, dayNum),
+      cta: "Понятно"
+    };
+  }
+
+  function renderDailyLoginPopup(result){
+    const copy = getDailyLoginPopupCopy(result || {});
+    if (dailyPopupTitleEl) dailyPopupTitleEl.textContent = copy.title;
+    if (dailyPopupTextEl) dailyPopupTextEl.textContent = copy.text;
+    if (btnCloseDailyPopup) btnCloseDailyPopup.textContent = copy.cta;
+    if (screenDailyPopup) screenDailyPopup.classList.toggle("reward", !!(result && result.rewardGranted));
+
+    if (dailyPopupProgressEl) {
+      const cells = Array.from(dailyPopupProgressEl.querySelectorAll(".daily-popup-cell"));
+      cells.forEach((cell, index) => {
+        cell.classList.remove("filled", "ready");
+        if (index < Math.min(copy.streak, 4)) cell.classList.add("filled");
+      });
+
+      const rewardCell = cells[4];
+      if (rewardCell) {
+        if (copy.streak >= 5) rewardCell.classList.add("filled");
+        else if (copy.streak === 4) rewardCell.classList.add("ready");
+      }
+    }
+  }
+
+  function openDailyLoginPopup(result){
+    renderDailyLoginPopup(result);
+    safeSetLS(DAILY_POPUP_SHOWN_KEY, getLocalDateKey());
+    trackGameEvent("daily_login_popup_viewed", {
+      rewardGranted: !!(result && result.rewardGranted),
+      streak: result && result.streak
+    });
+    setOverlay("daily");
+  }
+
+  function shouldShowDailyLoginPopup(result){
+    if (result && result.rewardGranted) return true;
+    return safeGetLS(DAILY_POPUP_SHOWN_KEY) !== getLocalDateKey();
+  }
+
+  function loadCoins(){
+    try { return Math.max(0, parseInt(localStorage.getItem(COINS_KEY) || "0", 10) || 0); }
+    catch(_) { return 0; }
+  }
+
+  function saveCoins(value){
+    try { localStorage.setItem(COINS_KEY, String(Math.max(0, value|0))); } catch(_) {}
+    queuePlayerSync("coins");
+  }
+
+  function loadOpenedPrizes(){
+    try {
+      const raw = localStorage.getItem(PRIZES_KEY);
+      const parsed = JSON.parse(raw || "{}");
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        const migrated = {};
+        const now = Date.now();
+        parsed.forEach(id => { if (typeof id === "string") migrated[id] = now; });
+        return migrated;
+      }
+      return {};
+    } catch(_) {
+      return {};
+    }
+  }
+
+  function saveOpenedPrizes(map){
+    try { localStorage.setItem(PRIZES_KEY, JSON.stringify(map || {})); } catch(_) {}
+    queuePlayerSync("prizes");
+  }
+
+  function cleanupExpiredPrizes(){
+    const now = Date.now();
+    let changed = false;
+    const next = { ...openedPrizes };
+    Object.keys(next).forEach(prizeId => {
+      const openedAt = Number(next[prizeId] || 0);
+      if (!openedAt || (now - openedAt) >= PRIZE_LIFETIME_MS) {
+        delete next[prizeId];
+        changed = true;
+      }
+    });
+    if (changed) {
+      openedPrizes = next;
+      saveOpenedPrizes(openedPrizes);
+    }
+  }
+
+  function isPrizeOpened(prizeId){
+    cleanupExpiredPrizes();
+    const openedAt = Number(openedPrizes[prizeId] || 0);
+    return !!openedAt && ((Date.now() - openedAt) < PRIZE_LIFETIME_MS);
+  }
+
+  function getPrizeRemainingMs(prizeId){
+    const openedAt = Number(openedPrizes[prizeId] || 0);
+    if (!openedAt) return 0;
+    return Math.max(0, PRIZE_LIFETIME_MS - (Date.now() - openedAt));
+  }
+
+  function formatRemainingMs(ms){
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const hh = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+    const ss = String(totalSec % 60).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  // ===== DOM =====
+  const elDesktop = document.getElementById("bikegame-desktop");
+  const elMobile = document.getElementById("bikegame-mobile");
+  const stage = document.getElementById("stage");
+  const canvas = document.getElementById("gameCanvas");
+
+  const ctx = canvas.getContext("2d", { alpha: false });
+  if (!ctx) { console.warn("2D context not available"); return; }
+
+  const screenStart = document.getElementById("screen-start");
+  const screenWin = document.getElementById("screen-win");
+  const screenLose = document.getElementById("screen-lose");
+
+  const hudLives = document.getElementById("hud-lives");
+  const hudCoins = document.getElementById("hud-coins");
+  const hudTime = document.getElementById("hud-time");
+
+  const btnStart = document.getElementById("btn-start");
+  const btnReplayWin = document.getElementById("btn-replay-win");
+  const btnReplayLose = document.getElementById("btn-replay-lose");
+
+  const winTitleEl = document.getElementById("win-title");
+  const winResultEl = document.getElementById("win-result");
+  const loseResultEl = document.getElementById("lose-result");
+  const winStatsEl = document.getElementById("win-stats");
+  const loseStatsEl = document.getElementById("lose-stats");
+  const winNextPrizeEl = document.getElementById("win-next-prize");
+  const loseNextPrizeEl = document.getElementById("lose-next-prize");
+
+  const btnSound = document.getElementById("btn-sound");
+  const btnPrizes = document.getElementById("btn-prizes");
+  const btnOpenPrizesWin = document.getElementById("btn-open-prizes-win");
+  const btnOpenPrizesLose = document.getElementById("btn-open-prizes-lose");
+  const hintOnceEl = document.getElementById("hint-once");
+  const dailyLoginProgressEl = document.getElementById("daily-login-progress");
+  const dailyLoginTextEl = document.getElementById("daily-login-text");
+  const authBoxEl = document.getElementById("auth-box");
+  const authStatusEl = document.getElementById("auth-status");
+  const authFormEl = document.getElementById("auth-form");
+  const authPhoneInput = document.getElementById("auth-phone");
+  const btnAuthCode = document.getElementById("btn-auth-code");
+  const authCodeRowEl = document.getElementById("auth-code-row");
+  const authCodeInput = document.getElementById("auth-code");
+  const btnAuthVerify = document.getElementById("btn-auth-verify");
+  const authUserEl = document.getElementById("auth-user");
+  const authPhoneSavedEl = document.getElementById("auth-phone-saved");
+  const btnAuthLogout = document.getElementById("btn-auth-logout");
+
+
+  // ===== Helpers =====
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const rand = (a,b)=>a+Math.random()*(b-a);
+  const pick = (arr)=>arr[(Math.random()*arr.length)|0];
+
+  function isMobileDevice() {
+    const coarse = window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : false;
+    return coarse || window.innerWidth <= MOBILE_MAX_WIDTH;
+  }
+
+  function applyDeviceMode() {
+    const isMobile = isMobileDevice();
+    elDesktop.style.display = isMobile ? "none" : "block";
+    elMobile.style.display = isMobile ? "block" : "none";
+  }
+
+  const mqCoarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+  if (mqCoarse) {
+    if (mqCoarse.addEventListener) mqCoarse.addEventListener("change", applyDeviceMode);
+    else if (mqCoarse.addListener) mqCoarse.addListener(applyDeviceMode);
+  }
+
+  // ✅ NEW: серые/красные сердца
+  const HEART_RED = "❤️";
+  const HEART_GREY = "♡"; // если нужно для совместимости — замени на "♡"
+
+  function getRunTimeLeft(){
+    return Math.max(0, Math.ceil(RUN_DURATION_SEC - Math.max(0, runTimeSec || 0)));
+  }
+
+  function setHUD(lv, _pr, coins = runCoins) {
+    const max = LIVES_START;
+    const v = Math.max(0, Math.min(max, lv|0));
+    hudLives.textContent = HEART_RED.repeat(v) + HEART_GREY.repeat(Math.max(0, max - v));
+    if (hudCoins) hudCoins.textContent = String(Math.max(0, coins|0));
+    updateTimeHUD(true);
+  }
+
+  function updateTimeHUD(force = false){
+    if (!hudTime) return;
+    const left = getRunTimeLeft();
+    if (!force && left === lastHudTimeLeft) return;
+    lastHudTimeLeft = left;
+    hudTime.textContent = String(left);
+  }
+
+  stage.addEventListener("touchmove", (e) => {
+    const allowScroll = e.target && (
+      e.target.closest("#prizes-grid") ||
+      e.target.closest("#screen-prizes .modal") ||
+      e.target.closest("#screen-prize-reward .modal")
+    );
+    if (allowScroll) return;
+    e.preventDefault();
+  }, { passive: false });
+  stage.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // ===== Overlays: Loading + Pause =====
+  function makeOverlay(id, title, bodyHTML) {
+    const el = document.createElement("div");
+    el.id = id;
+    el.className = "overlay";
+    el.innerHTML = `<div class="modal"><h2>${title}</h2>${bodyHTML}</div>`;
+    stage.appendChild(el);
+    return el;
+  }
+
+  const screenLoading = makeOverlay(
+    "screen-loading",
+    "Загрузка…",
+    `
+      <p class="muted" id="loading-text">Подготавливаем игру</p>
+      <div style="height:10px;border-radius:999px;background:rgba(0,0,0,0.08);overflow:hidden;">
+        <div id="loading-bar" style="height:100%;width:0%;background:#111;"></div>
+      </div>
+      <div class="hint" id="loading-percent">0%</div>
+      <div class="hint" id="loading-warn" style="display:none;"></div>
+    `
+  );
+
+  const screenPause = makeOverlay(
+    "screen-pause",
+    "Пауза",
+    `
+      <p class="muted">Игра приостановлена.</p>
+      <button id="btn-resume" class="btn primary" type="button">Продолжить</button>
+    `
+  );
+
+  const screenDailyPopup = makeOverlay(
+    "screen-daily-popup",
+    "",
+    `
+      <div class="daily-popup-icon">${coinIconHTML("daily-coin-icon")}</div>
+      <h2 id="daily-popup-title" class="daily-popup-title">Ежедневный вход</h2>
+      <p id="daily-popup-text" class="daily-popup-text">Проверяем серию входа…</p>
+      <div id="daily-popup-progress" class="daily-popup-progress" aria-label="Прогресс ежедневного входа">
+        <div class="daily-popup-cell">1</div>
+        <div class="daily-popup-cell">2</div>
+        <div class="daily-popup-cell">3</div>
+        <div class="daily-popup-cell">4</div>
+        <div class="daily-popup-cell reward">${coinIconHTML("daily-cell-coin-icon")}</div>
+      </div>
+      <div class="daily-popup-actions">
+        <button id="btn-close-daily-popup" class="btn primary" type="button">Понятно</button>
+      </div>
+    `
+  );
+
+  const screenPrizes = makeOverlay(
+    "screen-prizes",
+    "Призы",
+    `
+      <p class="muted prizes-balance-line">Баланс: ${coinIconHTML("prizes-balance-icon")} <b id="prizes-balance">0</b> <span id="prizes-balance-word">монет</span></p>
+      <div id="prizes-grid" class="prizes-grid"></div>
+      <div class="row">
+        <button id="btn-close-prizes" class="btn primary" type="button">Закрыть</button>
+      </div>
+    `
+  );
+
+  const screenPrizeOpening = makeOverlay(
+    "screen-prize-opening",
+    "Открытие приза",
+    `
+      <div class="prize-open-overlay">
+        <div id="prize-open-card" class="prize-open-card rarity-common">
+          <div class="prize-open-inner">
+            <div id="prize-open-icon" class="prize-open-icon">🎁</div>
+            <div id="prize-open-title" class="prize-open-title">Суперприз</div>
+            <div class="prize-open-sub">Открываем награду…</div>
+          </div>
+        </div>
+      </div>
+    `
+  );
+
+  const screenPrizeReward = makeOverlay(
+    "screen-prize-reward",
+    "",
+    `
+      <h3 id="reward-headline" style="margin:0;font-size:22px;line-height:1.25;">Отличное предложение уже ждёт вас!</h3>
+      <p id="reward-subline" class="muted">Скидка 33% на первый заказ от 1500₽ (кроме акции) по промокоду</p>
+      <div id="reward-promo-box" class="promo-box promo-box-full">ВАУ33</div>
+      <div class="stack-row">
+        <button id="btn-copy-reward" class="btn" type="button">Скопировать промокод</button>
+        <a id="btn-order-reward" class="btn primary" href="https://myspar.ru/catalog">Оформить заказ</a>
+        <button id="btn-close-reward" class="btn ghost" type="button">Назад к призам</button>
+      </div>
+      <div class="reward-timer-block">
+        <div class="hint">Промокод действует</div>
+        <div id="reward-timer" class="hint reward-timer-value">24:00:00</div>
+      </div>
+    `
+  );
+
+  const btnResume = screenPause.querySelector("#btn-resume");
+  const dailyPopupTitleEl = screenDailyPopup.querySelector("#daily-popup-title");
+  const dailyPopupTextEl = screenDailyPopup.querySelector("#daily-popup-text");
+  const dailyPopupProgressEl = screenDailyPopup.querySelector("#daily-popup-progress");
+  const btnCloseDailyPopup = screenDailyPopup.querySelector("#btn-close-daily-popup");
+  const prizesBalanceEl = screenPrizes.querySelector("#prizes-balance");
+  const prizesBalanceWordEl = screenPrizes.querySelector("#prizes-balance-word");
+  const prizesGridEl = screenPrizes.querySelector("#prizes-grid");
+  const btnClosePrizes = screenPrizes.querySelector("#btn-close-prizes");
+  const prizeOpenCardEl = screenPrizeOpening.querySelector("#prize-open-card");
+  const prizeOpenIconEl = screenPrizeOpening.querySelector("#prize-open-icon");
+  const prizeOpenTitleEl = screenPrizeOpening.querySelector("#prize-open-title");
+  const rewardHeadlineEl = screenPrizeReward.querySelector("#reward-headline");
+  const rewardSublineEl = screenPrizeReward.querySelector("#reward-subline");
+  const rewardPromoBoxEl = screenPrizeReward.querySelector("#reward-promo-box");
+  const rewardTimerEl = screenPrizeReward.querySelector("#reward-timer");
+  const btnCopyReward = screenPrizeReward.querySelector("#btn-copy-reward");
+  const btnOrderReward = screenPrizeReward.querySelector("#btn-order-reward");
+  const btnCloseReward = screenPrizeReward.querySelector("#btn-close-reward");
+
+  function setInputEnabled(v){ canvas.style.pointerEvents = v ? "auto" : "none"; }
+
+  function setOverlay(which) {
+    if (which !== "reward") stopRewardTimer();
+    if (which !== "prizes") stopPrizesTimer();
+    if (which !== "opening") stopPrizeOpeningTimeout();
+    screenStart.classList.remove("show");
+    screenWin.classList.remove("show");
+    screenLose.classList.remove("show");
+    screenLoading.classList.remove("show");
+    screenPause.classList.remove("show");
+    screenDailyPopup.classList.remove("show");
+    screenPrizes.classList.remove("show");
+    screenPrizeOpening.classList.remove("show");
+    screenPrizeReward.classList.remove("show");
+
+    if (which === "start") screenStart.classList.add("show");
+    if (which === "win") screenWin.classList.add("show");
+    if (which === "lose") screenLose.classList.add("show");
+    if (which === "loading") screenLoading.classList.add("show");
+    if (which === "pause") screenPause.classList.add("show");
+    if (which === "daily") screenDailyPopup.classList.add("show");
+    if (which === "prizes") screenPrizes.classList.add("show");
+    if (which === "opening") screenPrizeOpening.classList.add("show");
+    if (which === "reward") screenPrizeReward.classList.add("show");
+
+    if (which === "loading" || which === "pause" || which === "daily" || which === "prizes" || which === "opening" || which === "reward") setInputEnabled(false);
+    else setInputEnabled(true);
+  }
+
+  btnResume.addEventListener("click", () => setPaused(false));
+  if (btnCloseDailyPopup) btnCloseDailyPopup.addEventListener("click", () => setOverlay("start"));
+  let resumeAfterPrizes = false;
+  let prizesReturnOverlay = "start";
+  let currentRewardPrizeId = "";
+
+  function getDisplayCoins(){
+    return Math.max(0, running ? (runCoins|0) : (totalCoins|0));
+  }
+
+  function pluralRu(value, one, few, many){
+    const n = Math.abs(value | 0);
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+    return many;
+  }
+
+  function coinWord(value){
+    return pluralRu(value, "монета", "монеты", "монет");
+  }
+
+  function getPrizeById(prizeId){
+    return PRIZES.find(prize => prize.id === prizeId) || null;
+  }
+
+  function getNextAffordablePrizeInfo(){
+    cleanupExpiredPrizes();
+    const unopened = PRIZES
+      .filter(prize => !isPrizeOpened(prize.id))
+      .sort((a, b) => a.cost - b.cost);
+    const next = unopened.find(prize => totalCoins < prize.cost) || unopened[0] || null;
+    if (!next) return "Все призы уже открыты.";
+    const need = Math.max(0, next.cost - totalCoins);
+    return need > 0
+      ? `До ближайшего приза осталось ${need} ${coinWord(need)}.`
+      : "Можно открыть новый приз прямо сейчас.";
+  }
+
+  function renderResultStats(targetEl, nextPrizeEl, reason){
+    if (targetEl) {
+      targetEl.innerHTML = `
+        <div class="result-stat">
+          <span class="result-stat-value">${products}</span>
+          <span class="result-stat-label">товаров</span>
+        </div>
+        <div class="result-stat">
+          <span class="result-stat-value result-stat-value-coin">${coinIconHTML("result-coin-icon")}<span>${runCoins}</span></span>
+          <span class="result-stat-label">${coinWord(runCoins)}</span>
+        </div>
+        <div class="result-stat">
+          <span class="result-stat-value">${reason === "crash" ? lives : getRunTimeLeft()}</span>
+          <span class="result-stat-label">${reason === "crash" ? "жизней" : "сек"}</span>
+        </div>
+      `;
+    }
+    if (nextPrizeEl) nextPrizeEl.textContent = getNextAffordablePrizeInfo();
+  }
+
+  async function copyTextSafe(text){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return !!ok;
+  }
+
+  let rewardTimerInterval = 0;
+  let prizesTimerInterval = 0;
+
+  function stopRewardTimer(){
+    if (rewardTimerInterval) {
+      clearInterval(rewardTimerInterval);
+      rewardTimerInterval = 0;
+    }
+  }
+
+  function stopPrizesTimer(){
+    if (prizesTimerInterval) {
+      clearInterval(prizesTimerInterval);
+      prizesTimerInterval = 0;
+    }
+  }
+
+  function updatePrizesTimers(){
+    if (!prizesGridEl) return;
+
+    let needsRender = false;
+    prizesGridEl.querySelectorAll("[data-prize-meta-id]").forEach(metaEl => {
+      const prizeId = metaEl.getAttribute("data-prize-meta-id") || "";
+      const left = getPrizeRemainingMs(prizeId);
+
+      if (left <= 0) {
+        needsRender = true;
+        return;
+      }
+
+      metaEl.textContent = `Действует ещё ${formatRemainingMs(left)}`;
+    });
+
+    if (needsRender) {
+      cleanupExpiredPrizes();
+      renderPrizes();
+    }
+  }
+
+  function startPrizesTimer(){
+    stopPrizesTimer();
+    updatePrizesTimers();
+    prizesTimerInterval = window.setInterval(updatePrizesTimers, 1000);
+  }
+
+  function openPrizeReward(prizeId){
+    const prize = getPrizeById(prizeId);
+    if (!prize || !isPrizeOpened(prizeId)) return;
+    currentRewardPrizeId = prizeId;
+    rewardHeadlineEl.textContent = prize.headline;
+    rewardSublineEl.textContent = prize.subline;
+    rewardPromoBoxEl.textContent = prize.promoCode;
+    btnCopyReward.textContent = "Скопировать промокод";
+    btnOrderReward.href = PRIZE_CTA_URL;
+
+    const updateRewardTimer = () => {
+      const left = getPrizeRemainingMs(prizeId);
+      if (rewardTimerEl) rewardTimerEl.textContent = formatRemainingMs(left);
+      if (left <= 0) {
+        stopRewardTimer();
+        cleanupExpiredPrizes();
+        renderPrizes();
+        setOverlay("prizes");
+      }
+    };
+
+    stopRewardTimer();
+    updateRewardTimer();
+    rewardTimerInterval = window.setInterval(updateRewardTimer, 1000);
+    trackGameEvent("prize_reward_viewed", { prizeId });
+    setOverlay("reward");
+  }
+
+
+  let prizeOpeningTimeout = 0;
+
+  function stopPrizeOpeningTimeout(){
+    if (prizeOpeningTimeout) {
+      clearTimeout(prizeOpeningTimeout);
+      prizeOpeningTimeout = 0;
+    }
+  }
+
+  function openPrizeSequence(prizeId){
+    const prize = getPrizeById(prizeId);
+    if (!prize) return;
+    stopPrizeOpeningTimeout();
+    openPrizeReward(prizeId);
+  }
+
+  function renderPrizes(){
+    cleanupExpiredPrizes();
+    if (prizesBalanceEl) prizesBalanceEl.textContent = String(totalCoins);
+    if (prizesBalanceWordEl) prizesBalanceWordEl.textContent = coinWord(totalCoins);
+    const sortedPrizes = [...PRIZES].sort((a, b) => {
+      const ao = isPrizeOpened(a.id) ? 0 : 1;
+      const bo = isPrizeOpened(b.id) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      return a.cost - b.cost;
+    });
+
+    prizesGridEl.innerHTML = sortedPrizes.map(prize => {
+      const opened = isPrizeOpened(prize.id);
+      const canBuy = totalCoins >= prize.cost;
+      const needCoins = Math.max(0, prize.cost - totalCoins);
+      const btnText = opened ? "Посмотреть" : `Открыть за ${coinIconHTML("button-coin-icon")} ${prize.cost}`;
+      const btnClass = opened || canBuy ? "btn primary" : "btn";
+      const desc = opened
+        ? "Предложение уже открыто. Можно посмотреть промокод."
+        : (canBuy ? "Открой блок за монеты и забери предложение." : `Не хватает ${needCoins} монет.`);
+      const meta = opened
+        ? `Действует ещё ${formatRemainingMs(getPrizeRemainingMs(prize.id))}`
+        : "Откроется сразу после списания монет.";
+      return `
+        <div class="prize-card ${opened ? "opened" : ""}">
+          <div class="prize-card-top">
+            <div class="prize-card-top-left">
+              <div class="prize-title">${prize.title}</div>
+            </div>
+            <div class="prize-cost">${coinIconHTML("prize-coin-icon")}<span>${prize.cost}</span></div>
+          </div>
+          <div class="prize-desc">${desc}</div>
+          <button class="${btnClass}" type="button" data-prize-id="${prize.id}" ${opened || canBuy ? "" : "disabled"}>${btnText}</button>
+          <div class="prize-meta" ${opened ? `data-prize-meta-id="${prize.id}"` : ""}>${meta}</div>
+        </div>
+      `;
+    }).join("");
+
+    prizesGridEl.querySelectorAll("[data-prize-id]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const prizeId = btn.getAttribute("data-prize-id") || "";
+        const prize = getPrizeById(prizeId);
+        if (!prize) return;
+
+        if (!isPrizeOpened(prizeId)) {
+          if (totalCoins < prize.cost) return;
+          totalCoins = Math.max(0, totalCoins - prize.cost);
+          openedPrizes = { ...openedPrizes, [prizeId]: Date.now() };
+          saveCoins(totalCoins);
+          saveOpenedPrizes(openedPrizes);
+          setHUD(lives, products, getDisplayCoins());
+          renderPrizes();
+          trackGameEvent("prize_opened", { prizeId, cost: prize.cost });
+          openPrizeSequence(prizeId);
+          return;
+        }
+
+        openPrizeReward(prizeId);
+      });
+    });
+  }
+
+  function openPrizesScreen() {
+    resumeAfterPrizes = running && !paused;
+
+    if (resumeAfterPrizes) {
+      paused = true;
+      stopLoop();
+      prizesReturnOverlay = null;
+    } else {
+      prizesReturnOverlay = screenWin.classList.contains("show")
+        ? "win"
+        : (screenLose.classList.contains("show") ? "lose" : "start");
+    }
+
+    renderPrizes();
+    setOverlay("prizes");
+    startPrizesTimer();
+  }
+
+  btnPrizes.addEventListener("click", openPrizesScreen);
+  if (btnOpenPrizesWin) btnOpenPrizesWin.addEventListener("click", openPrizesScreen);
+  if (btnOpenPrizesLose) btnOpenPrizesLose.addEventListener("click", openPrizesScreen);
+  btnClosePrizes.addEventListener("click", () => {
+    stopRewardTimer();
+    stopPrizesTimer();
+
+    if (resumeAfterPrizes && running) {
+      resumeAfterPrizes = false;
+      paused = false;
+      setOverlay(null);
+      lastFrameTime = 0;
+      rafId = requestAnimationFrame(frame);
+      return;
+    }
+
+    resumeAfterPrizes = false;
+    setOverlay(prizesReturnOverlay);
+  });
+  btnCloseReward.addEventListener("click", () => {
+    stopRewardTimer();
+    renderPrizes();
+    setOverlay("prizes");
+    startPrizesTimer();
+  });
+  btnCopyReward.addEventListener("click", async () => {
+    const prize = getPrizeById(currentRewardPrizeId);
+    if (!prize) return;
+    try {
+      await copyTextSafe(prize.promoCode);
+      btnCopyReward.textContent = "Промокод скопирован";
+      trackGameEvent("promo_copied", { prizeId: currentRewardPrizeId });
+    } catch(_) {
+      btnCopyReward.textContent = "Не удалось скопировать";
+    }
+  });
+  if (btnOrderReward) {
+    btnOrderReward.addEventListener("click", () => {
+      trackGameEvent("order_clicked", { prizeId: currentRewardPrizeId });
+    });
+  }
+
+  // ===== UX: lock start buttons =====
+  let startLock = false;
+  function lockStartButtons() {
+    startLock = true;
+    btnStart.disabled = true;
+    btnReplayWin.disabled = true;
+    btnReplayLose.disabled = true;
+    setTimeout(() => {
+      startLock = false;
+      btnStart.disabled = false;
+      btnReplayWin.disabled = false;
+      btnReplayLose.disabled = false;
+    }, 250);
+  }
+
+  function tutorialSeen() {
+    try { return localStorage.getItem(TUTORIAL_KEY) === "1"; } catch(_) { return false; }
+  }
+  function markTutorialSeen() {
+    try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch(_){}
+  }
+  function updateTutorialUI() {
+    if (!hintOnceEl) return;
+    hintOnceEl.style.display = tutorialSeen() ? "none" : "block";
+  }
+  updateTutorialUI();
+
+  // ===== Asset loading =====
+  function makeImg(url){
+    const img = new Image();
+    img._ok = false;
+    img._url = url;
+    return img;
+  }
+
+  const IMG = {
+    road: makeImg(ASSETS.road),
+    courierAnimated: makeImg(ASSETS.courierAnimated),
+    courierFrames: ASSETS.courierFrames.map(makeImg),
+    courier: makeImg(ASSETS.courier),
+    obstacles: ASSETS.obstacles.map(makeImg),
+    products: ASSETS.products.map(makeImg),
+
+    // ✅ NEW
+    life: makeImg(ASSETS.life),
+    bonus: makeImg(ASSETS.bonus),
+    coin: makeImg(ASSETS.coin),
+  };
+
+  const loadingBar = screenLoading.querySelector("#loading-bar");
+  const loadingPercent = screenLoading.querySelector("#loading-percent");
+  const loadingText = screenLoading.querySelector("#loading-text");
+  const loadingWarn = screenLoading.querySelector("#loading-warn");
+
+  function setLoadingProgress(done, total) {
+    const p = total ? Math.round((done/total)*100) : 0;
+    loadingBar.style.width = `${p}%`;
+    loadingPercent.textContent = `${p}%`;
+  }
+
+  function loadOneImage(img) {
+    return new Promise((resolve) => {
+      img.onload = () => { img._ok = true; resolve({ ok:true }); };
+      img.onerror = () => { img._ok = false; resolve({ ok:false }); };
+      img.src = img._url;
+      if (img.decode) img.decode().catch(()=>{});
+    });
+  }
+
+  async function preloadAll() {
+    const optional = [IMG.courierAnimated, ...IMG.courierFrames];
+    const required = [ IMG.road, IMG.courier, ...IMG.obstacles, ...IMG.products, IMG.life, IMG.bonus, IMG.coin ];
+    const totalToCheck = optional.length + required.length;
+    loadingText.textContent = "Загружаем картинки…";
+    loadingWarn.style.display = "none";
+
+    let done = 0;
+    setLoadingProgress(done, totalToCheck);
+
+    for (const im of optional) {
+      await loadOneImage(im);
+      done++;
+      setLoadingProgress(done, totalToCheck);
+    }
+
+    const results = [];
+    for (const im of required) {
+      const r = await loadOneImage(im);
+      results.push(r);
+      done++;
+      setLoadingProgress(done, totalToCheck);
+    }
+
+    const failed = results.filter(x => !x.ok).length;
+    if (failed > 0) {
+      loadingWarn.style.display = "block";
+      loadingWarn.textContent = `Не удалось загрузить ${failed} картинок. Игра запустится, но часть объектов будет упрощённой.`;
+    }
+    return { failed, animatedCourier: !!IMG.courierAnimated._ok };
+  }
+
+  // ===== Sound (SVG icons) =====
+  const SVG_SOUND_ON = `
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M3 10v4a2 2 0 0 0 2 2h3l5 4V4L8 8H5a2 2 0 0 0-2 2z" fill="currentColor"/>
+    <path d="M16.5 7.5a6 6 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M19 5a9 9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+
+  const SVG_SOUND_OFF = `
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M3 10v4a2 2 0 0 0 2 2h3l5 4V4L8 8H5a2 2 0 0 0-2 2z" fill="currentColor"/>
+    <path d="M16 9l5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+
+  let soundEnabledRaw = safeGetLS(SOUND_KEY);
+  let soundEnabled = (soundEnabledRaw === null) ? true : (soundEnabledRaw === "1");
+  let audioCtx = null;
+
+  function ensureAudio() {
+    if (!soundEnabled) return null;
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }
+
+  function tone(freq, durationMs, type="sine", vol=0.12) {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(vol, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + durationMs / 1000);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(now);
+    osc.stop(now + durationMs / 1000 + 0.02);
+  }
+
+  function sfxCollect() { tone(880, 70, "sine", 0.10); tone(1100, 60, "triangle", 0.08); }
+  function sfxHit() { tone(140, 120, "square", 0.10); tone(90, 140, "sawtooth", 0.08); }
+  function sfxWin() {
+    tone(523, 90, "triangle", 0.10);
+    setTimeout(()=>tone(659, 90, "triangle", 0.10), 90);
+    setTimeout(()=>tone(784, 120, "triangle", 0.12), 180);
+  }
+
+  function updateSoundButton() {
+    btnSound.innerHTML = soundEnabled ? SVG_SOUND_ON : SVG_SOUND_OFF;
+    btnSound.classList.toggle("muted", !soundEnabled);
+    btnSound.setAttribute("aria-pressed", soundEnabled ? "true" : "false");
+    btnSound.setAttribute("aria-label", soundEnabled ? "Выключить звук" : "Включить звук");
+  }
+
+  function setSoundEnabled(v){
+    soundEnabled = !!v;
+    safeSetLS(SOUND_KEY, soundEnabled ? "1" : "0");
+    updateSoundButton();
+    if (soundEnabled) ensureAudio();
+  }
+
+  btnSound.addEventListener("click", () => setSoundEnabled(!soundEnabled));
+  updateSoundButton();
+
+  if (btnAuthCode) btnAuthCode.addEventListener("click", requestAuthCode);
+  if (btnAuthVerify) btnAuthVerify.addEventListener("click", verifyAuthCode);
+  if (btnAuthLogout) btnAuthLogout.addEventListener("click", logoutPlayer);
+  if (authPhoneInput) {
+    authPhoneInput.addEventListener("input", () => {
+      const formatted = formatPhoneForInput(authPhoneInput.value);
+      authPhoneInput.value = formatted;
+    });
+    authPhoneInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") requestAuthCode();
+    });
+  }
+  if (authCodeInput) {
+    authCodeInput.addEventListener("input", () => {
+      authCodeInput.value = authCodeInput.value.replace(/[^\d]/g, "").slice(0, OTP_CODE_LENGTH);
+      if (authCodeInput.value.length >= OTP_CODE_LENGTH) verifyAuthCode();
+    });
+    authCodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") verifyAuthCode();
+    });
+  }
+  renderAuthUI();
+
+  // ===== Canvas DPR =====
+  let DPR = 1;
+  function setBaseTransform(){ ctx.setTransform(DPR,0,0,DPR,0,0); }
+  function laneX(laneIndex,w){
+    const idx = clamp(Math.round(laneIndex), 0, LANES - 1);
+    const exact = LANE_X_FRACTIONS[idx];
+    if (Number.isFinite(exact)) return exact * w;
+    return (idx + 0.5) * (w / LANES);
+  }
+  function laneXInterpolated(laneValue,w){
+    const leftIndex = clamp(Math.floor(laneValue), 0, LANES - 1);
+    const rightIndex = clamp(Math.ceil(laneValue), 0, LANES - 1);
+    if (leftIndex === rightIndex) return laneX(leftIndex, w);
+    const t = clamp(laneValue - leftIndex, 0, 1);
+    return laneX(leftIndex, w) + (laneX(rightIndex, w) - laneX(leftIndex, w)) * t;
+  }
+  function laneVisualWidth(w){
+    if (LANE_X_FRACTIONS.length >= 2) {
+      let minGap = Infinity;
+      for (let i=1; i<LANE_X_FRACTIONS.length; i++){
+        minGap = Math.min(minGap, Math.abs(LANE_X_FRACTIONS[i] - LANE_X_FRACTIONS[i-1]));
+      }
+      if (Number.isFinite(minGap)) return minGap * w;
+    }
+    return w / LANES;
+  }
+  function resizeCanvasToStage(){
+    const rect = stage.getBoundingClientRect();
+    DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    canvas.width = Math.floor(rect.width * DPR);
+    canvas.height = Math.floor(rect.height * DPR);
+    setBaseTransform();
+  }
+
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => resizeCanvasToStage());
+    ro.observe(stage);
+  }
+
+  // ===== Pools =====
+  const entityPool = [];
+  const particlePool = [];
+  function acquireEntity() { return entityPool.pop() || { type:"", lane:0, y:0, prevY:0, hit:false, img:null }; }
+  function releaseEntity(e) { if(entityPool.length<100) entityPool.push(e); }
+  function acquireParticle(){ return particlePool.pop() || { x:0,y:0,vx:0,vy:0,life:0,r:0 }; }
+  function releaseParticle(p){ if(particlePool.length<260) particlePool.push(p); }
+
+  // ===== Game state =====
+  let running=false, paused=false;
+  let rafId=0;
+  let lastFrameTime = 0;
+  let accumulator = 0;
+  let runTimeSec = 0;
+  let lastHudTimeLeft = -1;
+  let currentRunId = "";
+
+  let lane=1;
+  let lanePos=1, lanePosPrev=1;
+  let lives=LIVES_START, products=0;
+  let totalCoins = loadCoins();
+  let openedPrizes = loadOpenedPrizes();
+  cleanupExpiredPrizes();
+  let runCoins = 0;
+  let dailyLoginResult = null;
+
+  const entities = [];
+  const particles = [];
+
+  let tToNextProduct = rand(PRODUCT_SPAWN_MIN, PRODUCT_SPAWN_MAX);
+  let tToNextObstacle = rand(OBSTACLE_SPAWN_MIN, OBSTACLE_SPAWN_MAX);
+
+  // ✅ NEW timers
+  let tToNextLife = rand(LIFE_SPAWN_MIN, LIFE_SPAWN_MAX);
+  let tToNextBonus = rand(BONUS_SPAWN_MIN, BONUS_SPAWN_MAX);
+  let tToNextCoin = rand(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
+
+  let speedMul = 1.0;
+  let recentObstacleBand = [];
+  let roadOffset=0;
+
+  let hitFlash=0;
+  let shakeT=0, shakeAmp=0;
+
+  // ===== Combo =====
+  let combo = 0;
+  let comboTimer = 0;
+  const COMBO_WINDOW = 2.2;
+  const comboPop = { t:0, text:"" };
+
+  function comboMultiplier(){
+    if (combo >= 8) return 3;
+    if (combo >= 4) return 2;
+    return 1;
+  }
+
+  function addCombo(){
+    combo = Math.min(12, combo + 1);
+    comboTimer = COMBO_WINDOW;
+    const m = comboMultiplier();
+    comboPop.t = 0.35;
+    comboPop.text = m>1 ? `x${m}` : "";
+  }
+
+  function breakCombo(){
+    combo = 0;
+    comboTimer = 0;
+    comboPop.t = 0.35;
+    comboPop.text = "Сброс";
+  }
+
+  function updateDifficulty(dt){
+    const timeBoost = Math.min(0.45, runTimeSec / RUN_DURATION_SEC * 0.45);
+    const target = clamp(1 + products * DIFF_PER_PRODUCT + timeBoost, 1, DIFF_MAX);
+    const k = 1 - Math.exp(-3 * dt);
+    speedMul += (target - speedMul) * k;
+  }
+
+  function obstacleInterval(){
+    const f = Math.max(1, speedMul);
+    const min = Math.max(0.45, OBSTACLE_SPAWN_MIN / f);
+    const max = Math.max(min + 0.15, OBSTACLE_SPAWN_MAX / f);
+    return rand(min, Math.min(2.2, max));
+  }
+
+  function productInterval(){
+    const f = Math.max(1, speedMul);
+    const min = Math.min(4.0, PRODUCT_SPAWN_MIN * f);
+    const max = Math.max(min + 0.2, Math.min(5.5, PRODUCT_SPAWN_MAX * f));
+    return rand(min, max);
+  }
+
+  // ===== FX =====
+  function triggerShake(){ shakeT=0.12; shakeAmp=7; }
+  function applyShake(dt){
+    if(shakeT<=0){ setBaseTransform(); return; }
+    shakeT -= dt;
+    const k=Math.max(0, shakeT/0.12);
+    const amp=shakeAmp*k;
+    const ox=(Math.random()*2-1)*amp;
+    const oy=(Math.random()*2-1)*amp;
+    ctx.setTransform(DPR,0,0,DPR,ox*DPR,oy*DPR);
+  }
+  function triggerVibrate(){
+    if(navigator && typeof navigator.vibrate==="function"){
+      navigator.vibrate([35,20,35]);
+    }
+  }
+
+  let courierBlinkT=0;
+  const COURIER_BLINK_DUR=0.60;
+  const COURIER_BLINK_FREQ=18;
+
+  let courierTilt=0, courierTiltVel=0;
+  const COURIER_TILT_MAX=8*Math.PI/180;
+  const COURIER_TILT_SNAP=32;
+  const COURIER_TILT_DAMP=10;
+
+  let jumpY=0, jumpYPrev=0, jumpVel=0;
+  const JUMP_STRENGTH=-220;
+  const JUMP_GRAVITY=900;
+
+  function moveLane(dir){
+    if(!running || paused) return;
+    const prev=lane;
+    lane = clamp(lane + (dir<0?-1:1), 0, LANES-1);
+    if(dir<0) courierTiltVel -= COURIER_TILT_MAX*6;
+    else courierTiltVel += COURIER_TILT_MAX*6;
+    if(lane!==prev) jumpVel = JUMP_STRENGTH;
+    if (!tutorialSeen()) { markTutorialSeen(); updateTutorialUI(); }
+  }
+
+  // ===== Fairness helpers =====
+  function dynamicSafeGapPx(){
+    return SPAWN_SAFE_GAP_Y + Math.max(0, speedMul - 1) * 130;
+  }
+
+  function lanesBlockedInDangerZone(czY){
+    const gap = dynamicSafeGapPx();
+    const blocked = new Set();
+    for(const e of entities){
+      if(e.hit) continue;
+      if(e.type !== "obstacle") continue;
+      if(e.y < czY && (czY - e.y) < gap) blocked.add(e.lane);
+    }
+    return blocked;
+  }
+
+  function canSpawnObstacleFair(laneIndex, w, h){
+    const czY = h*0.84;
+    const blocked = lanesBlockedInDangerZone(czY);
+    if(blocked.size >= LANES-1 && !blocked.has(laneIndex)) return false;
+
+    const gap = dynamicSafeGapPx();
+    for(const e of entities){
+      if(e.hit) continue;
+      if(e.type !== "obstacle") continue;
+      if(e.lane !== laneIndex) continue;
+      if(Math.abs(e.y - (-70)) < gap*0.65) return false;
+    }
+    return true;
+  }
+
+  function canSpawnObstacleInLaneBand(targetLane, nowSec){
+    recentObstacleBand = recentObstacleBand.filter(o => (nowSec - o.t) < BAND_WINDOW_SEC);
+    const s=new Set(recentObstacleBand.map(o=>o.lane));
+    s.add(targetLane);
+    return s.size <= MAX_OBSTACLES_SAME_BAND;
+  }
+
+  function isLaneClearForSpawn(laneIndex){
+    const gap = dynamicSafeGapPx();
+    for(const e of entities){
+      if(e.hit) continue;
+      if(e.lane!==laneIndex) continue;
+      if(Math.abs(e.y - (-70)) < gap) return false;
+    }
+    return true;
+  }
+
+  function pickOkOrNull(arr){
+    const ok = arr.filter(im => im && im._ok);
+    return ok.length ? pick(ok) : null;
+  }
+
+  // ===== Spawns =====
+  function spawnProduct(h){
+    const czY = h*0.84;
+    const gap = dynamicSafeGapPx();
+
+    for(let i=0;i<10;i++){
+      const laneIndex=(Math.random()*LANES)|0;
+      if(!isLaneClearForSpawn(laneIndex)) continue;
+
+      let bad = false;
+      for(const e of entities){
+        if(e.hit) continue;
+        if(e.type !== "obstacle") continue;
+        if(e.lane !== laneIndex) continue;
+        if(e.y < czY && (czY - e.y) < gap*0.9) { bad=true; break; }
+      }
+      if(bad) continue;
+
+      const ent = acquireEntity();
+      ent.type="product"; ent.lane=laneIndex; ent.y=-60; ent.prevY=ent.y; ent.hit=false;
+      ent.img = pickOkOrNull(IMG.products);
+      entities.push(ent);
+      return;
+    }
+  }
+
+  function spawnObstacle(nowSec, w, h){
+    for(let i=0;i<12;i++){
+      const laneIndex=(Math.random()*LANES)|0;
+      if(!canSpawnObstacleInLaneBand(laneIndex, nowSec)) continue;
+      if(!isLaneClearForSpawn(laneIndex)) continue;
+      if(!canSpawnObstacleFair(laneIndex, w, h)) continue;
+
+      const ent = acquireEntity();
+      ent.type="obstacle"; ent.lane=laneIndex; ent.y=-70; ent.prevY=ent.y; ent.hit=false;
+      ent.img = pickOkOrNull(IMG.obstacles);
+      entities.push(ent);
+
+      recentObstacleBand.push({ t: nowSec, lane: laneIndex });
+      return;
+    }
+  }
+
+  // ✅ NEW: life spawn (rare, only when not full)
+  function spawnLife(h){
+    if (lives >= LIVES_START) return;
+
+    const czY = h*0.84;
+    const gap = dynamicSafeGapPx();
+
+    for(let i=0;i<12;i++){
+      const laneIndex=(Math.random()*LANES)|0;
+      if(!isLaneClearForSpawn(laneIndex)) continue;
+
+      let bad=false;
+      for(const e of entities){
+        if(e.hit) continue;
+        if(e.type !== "obstacle") continue;
+        if(e.lane !== laneIndex) continue;
+        if(e.y < czY && (czY - e.y) < gap*0.95) { bad=true; break; }
+      }
+      if(bad) continue;
+
+      const ent = acquireEntity();
+      ent.type="life"; ent.lane=laneIndex; ent.y=-62; ent.prevY=ent.y; ent.hit=false;
+      ent.img = (IMG.life && IMG.life._ok) ? IMG.life : null;
+      entities.push(ent);
+      return;
+    }
+  }
+
+  // ✅ NEW: bonus spawn (rare)
+  function spawnBonus(h){
+    const czY = h*0.84;
+    const gap = dynamicSafeGapPx();
+
+    for(let i=0;i<12;i++){
+      const laneIndex=(Math.random()*LANES)|0;
+      if(!isLaneClearForSpawn(laneIndex)) continue;
+
+      let bad=false;
+      for(const e of entities){
+        if(e.hit) continue;
+        if(e.type !== "obstacle") continue;
+        if(e.lane !== laneIndex) continue;
+        if(e.y < czY && (czY - e.y) < gap*0.95) { bad=true; break; }
+      }
+      if(bad) continue;
+
+      const ent = acquireEntity();
+      ent.type="bonus"; ent.lane=laneIndex; ent.y=-62; ent.prevY=ent.y; ent.hit=false;
+      ent.img = (IMG.bonus && IMG.bonus._ok) ? IMG.bonus : null;
+      entities.push(ent);
+      return;
+    }
+  }
+
+  function spawnCoin(h){
+    const czY = h*0.84;
+    const gap = dynamicSafeGapPx();
+
+    for(let i=0;i<12;i++){
+      const laneIndex=(Math.random()*LANES)|0;
+      if(!isLaneClearForSpawn(laneIndex)) continue;
+
+      let bad=false;
+      for(const e of entities){
+        if(e.hit) continue;
+        if(e.type !== "obstacle") continue;
+        if(e.lane !== laneIndex) continue;
+        if(e.y < czY && (czY - e.y) < gap*0.9) { bad=true; break; }
+      }
+      if(bad) continue;
+
+      const ent = acquireEntity();
+      ent.type="coin"; ent.lane=laneIndex; ent.y=-62; ent.prevY=ent.y; ent.hit=false;
+      ent.img = (IMG.coin && IMG.coin._ok) ? IMG.coin : null;
+      entities.push(ent);
+      return;
+    }
+  }
+
+  // ===== Particles =====
+  function spawnCollectParticles(x,y){
+    for(let i=0;i<12;i++){
+      const p = acquireParticle();
+      p.x=x; p.y=y;
+      p.vx=(Math.random()*2-1)*110;
+      p.vy=-60-Math.random()*140;
+      p.life=0.55+Math.random()*0.25;
+      p.r=1.2+Math.random()*2.3;
+      particles.push(p);
+    }
+  }
+
+  function updateParticles(dt){
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.life -= dt;
+      if(p.life<=0){
+        particles.splice(i,1);
+        releaseParticle(p);
+        continue;
+      }
+      p.vy += 520*dt;
+      p.x += p.vx*dt;
+      p.y += p.vy*dt;
+      p.vx *= Math.exp(-3*dt);
+    }
+  }
+
+  function drawParticles(){
+    if(!particles.length) return;
+    ctx.save();
+    ctx.fillStyle="rgba(255,255,255,0.75)";
+    for(const p of particles){
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ===== Draw =====
+  function drawFallbackBackground(w,h){
+    ctx.fillStyle="#f3f4f6";
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle="rgba(0,0,0,0.12)";
+    ctx.lineWidth=2;
+    for(let i=1;i<LANES;i++){
+      const x=w*(i/LANES);
+      ctx.beginPath();
+      ctx.moveTo(x,0);
+      ctx.lineTo(x,h);
+      ctx.stroke();
+    }
+  }
+
+  function drawRoad(w,h,dt){
+    const img=(IMG.road && IMG.road._ok)?IMG.road:null;
+    if(!img){ drawFallbackBackground(w,h); return; }
+    const scale=w/img.width;
+    const drawH=img.height*scale;
+    const bgSpeedFactor=0.25;
+
+    roadOffset = roadOffset + (BASE_SPEED_PX_PER_SEC * speedMul * dt * bgSpeedFactor);
+    roadOffset = roadOffset % drawH;
+    if(roadOffset<0) roadOffset+=drawH;
+
+    ctx.fillStyle="#fff";
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img,0,roadOffset-drawH,w,drawH);
+    ctx.drawImage(img,0,roadOffset,w,drawH);
+    if(drawH<h) ctx.drawImage(img,0,roadOffset+drawH,w,drawH);
+  }
+
+  function drawImageCentered(img,x,y,dw,dh){
+    ctx.drawImage(img, x-dw/2, y-dh/2, dw, dh);
+  }
+
+  // ✅ NEW: size for life/bonus
+  function entityBaseSize(type,w){
+    const laneW=laneVisualWidth(w);
+    if(type==="product") return laneW*0.40;
+    if(type==="obstacle") return laneW*0.46;
+    if(type==="life") return laneW*0.34;
+    if(type==="bonus") return laneW*0.36;
+    if(type==="coin") return laneW*0.42;
+    return laneW*0.42;
+  }
+
+  function drawEntity(e,w,alpha){
+    const x=laneX(e.lane,w);
+    const y=e.prevY + (e.y - e.prevY) * alpha;
+    const base=entityBaseSize(e.type,w);
+
+    if(e.img){
+      const s=base/e.img.width;
+      drawImageCentered(e.img,x,y,e.img.width*s,e.img.height*s);
+      return;
+    }
+
+    if(e.type==="product"){
+      ctx.fillStyle="#10b981";
+      ctx.beginPath();
+      ctx.arc(x,y,base*0.5,0,Math.PI*2);
+      ctx.fill();
+    } else if(e.type==="life"){
+      ctx.fillStyle="#ef4444";
+      ctx.beginPath();
+      ctx.arc(x,y,base*0.5,0,Math.PI*2);
+      ctx.fill();
+    } else if(e.type==="bonus"){
+      ctx.fillStyle="#facc15";
+      ctx.beginPath();
+      ctx.arc(x,y,base*0.5,0,Math.PI*2);
+      ctx.fill();
+    } else if(e.type==="coin"){
+      ctx.fillStyle="#facc15";
+      ctx.beginPath();
+      ctx.arc(x,y,base*0.5,0,Math.PI*2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle="#f97316";
+      ctx.fillRect(x-base*0.5, y-base*0.5, base, base);
+    }
+  }
+
+  function drawCourierFallback(x, y, laneW){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle="#111";
+    ctx.beginPath();
+    ctx.arc(0, -laneW*0.22, laneW*0.12, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#111";
+    ctx.lineWidth=Math.max(3, laneW*0.035);
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(0, -laneW*0.08);
+    ctx.lineTo(-laneW*0.12, laneW*0.12);
+    ctx.moveTo(0, -laneW*0.08);
+    ctx.lineTo(laneW*0.14, laneW*0.10);
+    ctx.moveTo(-laneW*0.18, laneW*0.18);
+    ctx.lineTo(laneW*0.18, laneW*0.18);
+    ctx.stroke();
+    ctx.strokeStyle="#111";
+    ctx.lineWidth=Math.max(2, laneW*0.025);
+    ctx.beginPath();
+    ctx.arc(-laneW*0.2, laneW*0.22, laneW*0.12, 0, Math.PI*2);
+    ctx.arc(laneW*0.2, laneW*0.22, laneW*0.12, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function getCourierFrameState(){
+    const frames = (IMG.courierFrames || []).filter(im => im && im._ok);
+    if (frames.length) {
+      const frameRate = 9.5;
+      const progress = runTimeSec * frameRate * Math.max(0.9, Math.min(1.35, speedMul));
+      const currentIndex = Math.floor(progress) % frames.length;
+      const nextIndex = (currentIndex + 1) % frames.length;
+      const mix = progress - Math.floor(progress);
+      const easedMix = mix * mix * (3 - 2 * mix);
+      return {
+        current: frames[currentIndex],
+        next: frames[nextIndex],
+        mix: easedMix
+      };
+    }
+
+    const fallback = (IMG.courierAnimated && IMG.courierAnimated._ok)
+      ? IMG.courierAnimated
+      : ((IMG.courier && IMG.courier._ok) ? IMG.courier : null);
+
+    return fallback ? { current: fallback, next: null, mix: 0 } : null;
+  }
+
+  function drawCourier(w,h,alpha){
+    const x=laneXInterpolated(lanePosPrev + (lanePos - lanePosPrev)*alpha, w);
+    const pedalT = running ? runTimeSec * (10 + speedMul * 2.2) : 0;
+    const pedalBounce = running && !paused ? Math.sin(pedalT) * laneVisualWidth(w) * 0.012 : 0;
+    const y=(h*0.84) + (jumpYPrev + (jumpY - jumpYPrev)*alpha) + pedalBounce;
+    const laneW=laneVisualWidth(w);
+
+    ctx.save();
+    ctx.fillStyle="rgba(0,0,0,0.08)";
+    ctx.beginPath();
+    ctx.ellipse(x, (h*0.84)+25, laneW*0.17, laneW*0.22, 0,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    const frameState=getCourierFrameState();
+    if(!frameState || !frameState.current){
+      drawCourierFallback(x, y, laneW);
+      return;
+    }
+
+    const img=frameState.current;
+    const targetW=laneW*0.82;
+    const s=targetW/img.width;
+    const dw=img.width*s;
+    const dh=img.height*s;
+
+    let a=1;
+    if(courierBlinkT>0){
+      const phase=Math.floor(courierBlinkT*COURIER_BLINK_FREQ);
+      a=(phase%2===0)?1:0.25;
+    }
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(courierTilt + Math.sin(pedalT * 0.5) * 0.018);
+    ctx.globalAlpha=a;
+    ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
+    if(frameState.next && frameState.next !== img && frameState.mix > 0.02){
+      ctx.globalAlpha=a * Math.min(0.45, frameState.mix * 0.45);
+      ctx.drawImage(frameState.next,-dw/2,-dh/2,dw,dh);
+    }
+    ctx.restore();
+  }
+
+  function courierHitZone(w,h){
+    const x=laneXInterpolated(lanePos,w);
+    const y=h*0.84 + jumpY;
+    return {x,y,r:laneVisualWidth(w)*0.20};
+  }
+
+  // ✅ NEW: hit radius for life/bonus
+  function entityHitRadius(e,w){
+    const base=entityBaseSize(e.type,w);
+    if(e.type==="obstacle") return base*0.32;
+    return base*0.36;
+  }
+
+  // ===== Pause =====
+  function stopLoop(){ if(rafId) cancelAnimationFrame(rafId); rafId=0; }
+
+  function setPaused(v){
+    const nv = !!v;
+    if (paused === nv) return;
+    paused = nv;
+
+    if (paused) { stopLoop(); setOverlay("pause"); }
+    else { setOverlay(null); lastFrameTime=0; rafId=requestAnimationFrame(frame); }
+  }
+
+  document.addEventListener("visibilitychange", () => { if(running) setPaused(document.hidden); });
+  window.addEventListener("blur", () => { if(running) setPaused(true); });
+  window.addEventListener("focus", () => { if(running) setPaused(false); });
+
+  // ===== Finish =====
+  function finishRun(reason = "time"){
+    running=false;
+    stopLoop();
+
+    if(runCoins > 0){
+      totalCoins += runCoins;
+      saveCoins(totalCoins);
+    }
+
+    const crashed = reason === "crash";
+    if (winTitleEl) winTitleEl.textContent = "Финиш!";
+    if (winResultEl) winResultEl.textContent = `Ты собрал ${products} товаров и ${runCoins} ${coinWord(runCoins)}.`;
+    if (loseResultEl) loseResultEl.textContent = `Жизни закончились. Ты собрал ${products} товаров и ${runCoins} ${coinWord(runCoins)}.`;
+    renderResultStats(winStatsEl, winNextPrizeEl, reason);
+    renderResultStats(loseStatsEl, loseNextPrizeEl, reason);
+    setHUD(lives, products, runCoins);
+    setOverlay(crashed ? "lose" : "win");
+    trackGameEvent("run_finish", { runId: currentRunId, reason, products, coins: runCoins, lives, durationSec: Math.min(RUN_DURATION_SEC, Math.round(runTimeSec)) });
+    if (!crashed) sfxWin();
+  }
+
+  // ===== Collisions =====
+  function checkCollisions(w,h){
+    const cz=courierHitZone(w,h);
+    for(const e of entities){
+      if(e.hit) continue;
+
+      const ex = laneX(e.lane, w);
+      const r = entityHitRadius(e,w);
+
+      const dx = ex - cz.x;
+      const dy = e.y - cz.y;
+      const rr = (r + cz.r) * 0.95;
+
+      if((dx*dx + dy*dy) < (rr*rr)){
+        if(e.type === "life"){
+          e.hit = true;
+          if(lives < LIVES_START){
+            lives = Math.min(LIVES_START, lives + 1);
+            setHUD(lives, products, runCoins);
+          }
+          spawnCollectParticles(ex, e.y);
+          sfxCollect();
+          continue;
+        }
+
+        if(e.type === "bonus"){
+          e.hit = true;
+          products += 2; // ✅ +2 товара
+          setHUD(lives, products, runCoins);
+          spawnCollectParticles(ex, e.y);
+          sfxCollect();
+          continue;
+        }
+
+        if(e.type === "coin"){
+          e.hit = true;
+          runCoins += 1;
+          setHUD(lives, products, runCoins);
+          spawnCollectParticles(ex, e.y);
+          sfxCollect();
+          continue;
+        }
+
+        if(e.type==="product"){
+          e.hit=true;
+          addCombo();
+          const gain = comboMultiplier();
+          products += gain;
+          setHUD(lives, products, runCoins);
+          spawnCollectParticles(ex, e.y);
+          sfxCollect();
+          continue;
+        }
+
+        // obstacle
+        if(courierBlinkT>0){ e.hit=true; continue; }
+        e.hit=true;
+        hitFlash=0.22;
+        triggerShake(); triggerVibrate(); sfxHit();
+        breakCombo();
+        courierBlinkT=COURIER_BLINK_DUR;
+
+        lives=Math.max(0,lives-1);
+        setHUD(lives, products, runCoins);
+
+        if(lives<=0){
+          finishRun("crash");
+          return;
+        }
+      }
+    }
+  }
+
+  // ===== Combo UI =====
+  function drawComboUI(dt){
+    if(comboTimer>0) comboTimer = Math.max(0, comboTimer - dt);
+    if(comboTimer===0 && combo>0){ combo=0; }
+
+    const m = comboMultiplier();
+    const text = `Комбо: ${combo}  Множитель: x${m}`;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.font = "700 12px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial";
+    ctx.textAlign="left";
+    ctx.textBaseline="top";
+    ctx.fillText(text, 12, 12);
+    ctx.restore();
+
+    if(comboPop.t>0){
+      comboPop.t = Math.max(0, comboPop.t - dt);
+      const k = comboPop.t / 0.35;
+      ctx.save();
+      ctx.globalAlpha = k;
+      ctx.font = "900 18px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial";
+      ctx.fillStyle = "rgba(0,0,0,0.65)";
+      ctx.fillText(comboPop.text, 12, 30);
+      ctx.restore();
+    }
+  }
+
+  // ===== Physics update (fixed) =====
+  function updateFixed(dt, w, h){
+    runTimeSec += dt;
+    updateTimeHUD();
+    if (runTimeSec >= RUN_DURATION_SEC) {
+      finishRun("time");
+      return;
+    }
+
+    updateDifficulty(dt);
+
+    if(courierBlinkT>0){
+      courierBlinkT-=dt;
+      if(courierBlinkT<0) courierBlinkT=0;
+    }
+
+    lanePosPrev = lanePos;
+    lanePos += (lane - lanePos) * (1 - Math.exp(-LANE_SMOOTH * dt));
+
+    {
+      const force = (0 - courierTilt) * COURIER_TILT_SNAP;
+      courierTiltVel += force * dt;
+      courierTiltVel *= Math.exp(-COURIER_TILT_DAMP * dt);
+      courierTilt += courierTiltVel * dt;
+      courierTilt = clamp(courierTilt, -COURIER_TILT_MAX, COURIER_TILT_MAX);
+    }
+
+    jumpYPrev = jumpY;
+    jumpVel += JUMP_GRAVITY * dt;
+    jumpY += jumpVel * dt;
+    if(jumpY>0){ jumpY=0; jumpVel=0; }
+
+    updateParticles(dt);
+
+    tToNextProduct -= dt;
+    tToNextObstacle -= dt;
+    tToNextLife -= dt;
+    tToNextBonus -= dt;
+    tToNextCoin -= dt;
+
+    if(tToNextProduct<=0){
+      spawnProduct(h);
+      tToNextProduct = productInterval();
+    }
+    if(runTimeSec >= OBSTACLE_GRACE_SEC && tToNextObstacle<=0){
+      spawnObstacle(runTimeSec, w, h);
+      tToNextObstacle = obstacleInterval();
+    }
+    if(tToNextCoin<=0){
+      spawnCoin(h);
+      tToNextCoin = rand(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
+    }
+
+    // ✅ NEW: rare life/bonus spawns
+    if(tToNextLife <= 0){
+      spawnLife(h);
+      tToNextLife = rand(LIFE_SPAWN_MIN, LIFE_SPAWN_MAX) * (1 + Math.max(0, speedMul-1)*0.25);
+    }
+    if(tToNextBonus <= 0){
+      spawnBonus(h);
+      tToNextBonus = rand(BONUS_SPAWN_MIN, BONUS_SPAWN_MAX) * (1 + Math.max(0, speedMul-1)*0.20);
+    }
+
+    const speed = BASE_SPEED_PX_PER_SEC * speedMul;
+
+    for (let i=entities.length-1; i>=0; i--){
+      const e = entities[i];
+      e.prevY = e.y;
+      e.y += speed*dt;
+      if (e.hit || e.y > (h+140)){
+        entities.splice(i,1);
+        releaseEntity(e);
+      }
+    }
+
+    checkCollisions(w, h);
+
+    if(hitFlash>0){
+      hitFlash -= dt;
+      if(hitFlash<0) hitFlash=0;
+    }
+  }
+
+  function renderFrame(frameDt, alpha, w, h){
+    applyShake(frameDt);
+
+    drawRoad(w,h,frameDt);
+    for(const e of entities) drawEntity(e,w,alpha);
+
+    drawParticles();
+    drawCourier(w,h,alpha);
+
+    drawComboUI(frameDt);
+
+    if(hitFlash>0){
+      ctx.fillStyle="rgba(255,0,0,0.14)";
+      ctx.fillRect(0,0,w,h);
+    }
+  }
+
+  function frame(ts){
+    if(!running || paused) return;
+
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+
+    const t = ts/1000;
+    if(!lastFrameTime) lastFrameTime = t;
+
+    let frameDt = t - lastFrameTime;
+    lastFrameTime = t;
+    frameDt = Math.max(0, Math.min(MAX_FRAME_DT, frameDt));
+
+    accumulator += frameDt;
+
+    let steps = 0;
+    while(accumulator >= FIXED_DT && steps < MAX_STEPS_PER_FRAME){
+      updateFixed(FIXED_DT, w, h);
+      accumulator -= FIXED_DT;
+      steps++;
+      if(!running) break;
+    }
+
+    if(!running) return;
+
+    if(steps === MAX_STEPS_PER_FRAME) accumulator = 0;
+
+    const alpha = FIXED_DT > 0 ? clamp(accumulator / FIXED_DT, 0, 1) : 0;
+    renderFrame(frameDt, alpha, w, h);
+
+    rafId = requestAnimationFrame(frame);
+  }
+
+  // ===== Input =====
+  let pDown=false, pStartX=0, pStartY=0;
+
+  stage.addEventListener("pointerdown",(e)=>{
+    if(!running || paused) return;
+    pDown=true;
+    pStartX=e.clientX; pStartY=e.clientY;
+    try { stage.setPointerCapture(e.pointerId); } catch(_){}
+  },{passive:true});
+
+  stage.addEventListener("pointerup",(e)=>{
+    if(!running || paused) return;
+    if(!pDown) return;
+    pDown=false;
+
+    const dx=e.clientX-pStartX;
+    const dy=e.clientY-pStartY;
+    const ax=Math.abs(dx);
+    const ay=Math.abs(dy);
+
+    const thr = Math.max(22, Math.round(stage.clientWidth * 0.05));
+    if(ax >= thr && ax >= ay){
+      moveLane(dx<0?-1:1);
+      return;
+    }
+
+    const rect=stage.getBoundingClientRect();
+    const x=e.clientX-rect.left;
+    moveLane(x<rect.width/2?-1:1);
+  },{passive:true});
+
+  stage.addEventListener("pointercancel",()=>{ pDown=false; },{passive:true});
+
+  // ===== Reset/start =====
+  function resetGame(){
+    stopLoop();
+    running=false; paused=false;
+
+    lastFrameTime=0; accumulator=0; runTimeSec=0;
+    lastHudTimeLeft=-1;
+    currentRunId="";
+
+    lane=1;
+    lanePos=lane; lanePosPrev=lanePos;
+
+    lives=LIVES_START; products=0; runCoins=0;
+    setHUD(lives, products, runCoins);
+
+    combo=0; comboTimer=0; comboPop.t=0; comboPop.text="";
+
+    for (let i=entities.length-1;i>=0;i--) releaseEntity(entities[i]);
+    entities.length=0;
+
+    for (let i=particles.length-1;i>=0;i--) releaseParticle(particles[i]);
+    particles.length=0;
+
+    speedMul=1.0;
+    tToNextProduct=productInterval();
+    tToNextObstacle=obstacleInterval();
+
+    // ✅ NEW
+    tToNextLife = rand(LIFE_SPAWN_MIN, LIFE_SPAWN_MAX);
+    tToNextBonus = rand(BONUS_SPAWN_MIN, BONUS_SPAWN_MAX);
+    tToNextCoin = rand(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
+
+    recentObstacleBand=[];
+    roadOffset=0;
+
+    hitFlash=0; shakeT=0; shakeAmp=0; setBaseTransform();
+    courierTilt=0; courierTiltVel=0;
+    courierBlinkT=0;
+    jumpY=0; jumpYPrev=0; jumpVel=0;
+
+
+  }
+
+  function startGame(){
+    if(startLock) return;
+    lockStartButtons();
+    ensureAudio();
+
+    resetGame();
+    setOverlay(null);
+
+    running=true;
+    paused=false;
+    currentRunId = makeRunId();
+    trackGameEvent("run_start", { runId: currentRunId, durationSec: RUN_DURATION_SEC });
+    rafId = requestAnimationFrame(frame);
+  }
+
+  btnStart.addEventListener("click", startGame);
+  btnReplayWin.addEventListener("click", startGame);
+  btnReplayLose.addEventListener("click", startGame);
+
+  // ===== Init =====
+  applyDeviceMode();
+  resizeCanvasToStage();
+  setHUD(LIVES_START, 0, totalCoins);
+
+
+  (async () => {
+    setOverlay("loading");
+    btnStart.disabled = true;
+    if (authToken) {
+      await loadRemotePlayerState(getLocalPlayerStateSnapshot());
+    }
+    dailyLoginResult = applyDailyLoginReward();
+    renderDailyLoginStatus(dailyLoginResult);
+    setHUD(LIVES_START, 0, totalCoins);
+    renderAuthUI();
+    await preloadAll();
+    setOverlay("start");
+    btnStart.disabled = false;
+    if (shouldShowDailyLoginPopup(dailyLoginResult)) {
+      openDailyLoginPopup(dailyLoginResult);
+    }
+  })();
+
+  let resizeTimer = 0;
+  window.addEventListener("resize", ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      applyDeviceMode();
+      resizeCanvasToStage();
+    }, 80);
+  });
+})();
+</script>
