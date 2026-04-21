@@ -1,3 +1,11 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Гонка за покупками</title>
+</head>
+<body>
 <div id="bikegame-root">
   <!-- Desktop fallback -->
   <div id="bikegame-desktop" style="display:none;">
@@ -95,6 +103,18 @@
 </div>
 
 <style>
+  html,
+  body{
+    margin:0;
+    min-height:100%;
+    background:#fff;
+    overscroll-behavior:none;
+  }
+
+  body{
+    min-height:100svh;
+  }
+
   #bikegame-root{
     --ui-gap: 12px;
     --ui-gap-sm: 10px;
@@ -108,13 +128,25 @@
     --ui-focus: 2px solid #111;
     --ui-ease: cubic-bezier(.2,.8,.2,1);
     --ui-dur: 220ms;
+    --app-height: 100svh;
+    --game-max-width: 520px;
+    --stage-height: min(70svh, 560px);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   }
 
   #bikegame-root * { box-sizing: border-box; }
   #bikegame-root, #bikegame-root *{ -webkit-user-select:none; user-select:none; }
 
-  .bg-wrap { width: 100%; max-width: 520px; margin: 0 auto; padding: var(--ui-gap); padding-bottom: calc(var(--ui-gap) + env(safe-area-inset-bottom)); }
+  .bg-wrap {
+    width: 100%;
+    max-width: var(--game-max-width);
+    min-height: var(--app-height);
+    margin: 0 auto;
+    padding: max(8px, env(safe-area-inset-top)) var(--ui-gap) calc(var(--ui-gap) + env(safe-area-inset-bottom));
+    display:grid;
+    grid-template-rows:auto minmax(0, 1fr) auto;
+    gap:var(--ui-gap-sm);
+  }
   .bg-card { max-width: 520px; margin: 24px auto; padding: 18px; border-radius: 16px; border: var(--ui-border); background: var(--ui-bg); }
   .bg-card h2 { margin: 0 0 10px; font-size: 20px; }
   .bg-card p { margin: 0; opacity: 0.75; }
@@ -167,8 +199,8 @@
   .sound-btn:active{ transform: translateY(1px); }
   .sound-btn.muted{ opacity: 0.55; }
 
-  .stage { position: relative; margin-top: var(--ui-gap-sm); border-radius: var(--ui-radius); overflow: hidden;
-           border: var(--ui-border); touch-action: none; height: min(70vh, 560px); background: #f7f7f7; }
+  .stage { position: relative; border-radius: var(--ui-radius); overflow: hidden;
+           border: var(--ui-border); touch-action: none; height: var(--stage-height); min-height: 360px; background: #f7f7f7; align-self:stretch; }
   canvas { width: 100%; height: 100%; display: block; }
 
   .overlay { position: absolute; inset: 0; display: none; place-items: center; background: rgba(255,255,255,0.78); backdrop-filter: blur(6px); padding: 14px; }
@@ -214,6 +246,150 @@
 
   .sound-btn:focus-visible, .btn:focus-visible, a.btn:focus-visible{ outline: var(--ui-focus); outline-offset: 2px; }
 
+  @supports (height: 100dvh){
+    #bikegame-root{
+      --app-height: 100dvh;
+      --stage-height: min(70dvh, 560px);
+    }
+  }
+
+  @media (min-width: 540px) and (min-height: 760px){
+    #bikegame-root{
+      --game-max-width: 540px;
+      --stage-height: min(72dvh, 620px);
+    }
+  }
+
+  @media (max-width: 430px){
+    #bikegame-root{
+      --ui-gap: 10px;
+      --ui-gap-sm: 8px;
+      --stage-height: min(68dvh, 500px);
+    }
+
+    .hud{
+      padding:8px 9px;
+      gap:7px;
+    }
+
+    .hud-left,
+    .hud-right{
+      gap:7px;
+      flex-wrap:nowrap;
+    }
+
+    .hud-left{
+      flex:1 1 auto;
+    }
+
+    .hud-right{
+      flex:0 0 auto;
+    }
+
+    .hud-label{
+      display:none;
+    }
+
+    .hud-value{
+      font-size:13px;
+    }
+
+    .hud .hud-btn,
+    .hud .sound-btn{
+      width:58px;
+      min-width:58px;
+      min-height:38px;
+      padding:7px 8px;
+      font-size:12px;
+    }
+
+    .sound-btn svg{
+      width:17px;
+      height:17px;
+    }
+
+    .stage{
+      min-height:330px;
+    }
+
+    .modal{
+      padding:14px;
+    }
+  }
+
+  @media (max-height: 690px){
+    #bikegame-root{
+      --ui-gap: 9px;
+      --ui-gap-sm: 7px;
+      --stage-height: min(64dvh, 430px);
+    }
+
+    .stage{
+      min-height:300px;
+    }
+
+    .footer-note{
+      display:none;
+    }
+
+    .modal{
+      max-height:calc(var(--app-height) - 28px);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    .auth-box{
+      padding:10px;
+    }
+
+    .modal > * + *{
+      margin-top:8px;
+    }
+  }
+
+  @media (max-height: 610px){
+    #bikegame-root{
+      --stage-height: min(59dvh, 360px);
+    }
+
+    .stage{
+      min-height:260px;
+    }
+
+    .hud{
+      padding:7px 8px;
+    }
+
+    .hud .hud-btn,
+    .hud .sound-btn{
+      min-height:34px;
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 520px){
+    #bikegame-root{
+      --game-max-width: 100vw;
+      --stage-height: calc(var(--app-height) - 72px);
+    }
+
+    .bg-wrap{
+      padding:6px max(10px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+      grid-template-rows:auto minmax(0, 1fr);
+    }
+
+    .stage{
+      min-height:220px;
+    }
+
+    .footer-note{
+      display:none;
+    }
+
+    .overlay{
+      padding:10px;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce){
     .overlay.show{ animation:none !important; }
     .overlay.show .modal{ animation:none !important; }
@@ -252,7 +428,7 @@
     grid-template-columns:1fr;
     gap:12px;
     margin-top:12px;
-    max-height:min(35vh, 250px);
+    max-height:min(38dvh, 300px);
     overflow-y:auto;
     overflow-x:hidden;
     -webkit-overflow-scrolling: touch;
@@ -262,11 +438,11 @@
   }
 
   @media (min-height: 760px) and (min-width: 390px){
-    .prizes-grid{ max-height:min(48vh, 390px); }
+    .prizes-grid{ max-height:min(48dvh, 390px); }
   }
 
   @media (min-height: 860px) and (min-width: 410px){
-    .prizes-grid{ max-height:min(58vh, 520px); }
+    .prizes-grid{ max-height:min(58dvh, 520px); }
   }
 
   .prize-card{
@@ -423,7 +599,7 @@
   }
 
   #screen-prizes .modal{
-    max-height:min(82vh, 680px);
+    max-height:min(82dvh, 680px);
     overflow:hidden;
     display:flex;
     flex-direction:column;
@@ -864,7 +1040,7 @@
   const ASSETS = {
     courierAnimated: `${ASSET_DIR}courier.gif`,
     courierFrames: Array.from({ length: 8 }, (_, index) => `${ASSET_DIR}courier/${index + 1}.png`),
-    courier: `${ASSET_DIR}courier.png`,
+    courier: `${ASSET_DIR}courier/1.png`,
     road: `${ASSET_DIR}road_bg.png`,
     obstacles: [
       `${ASSET_DIR}obstacle.png`,
@@ -1683,6 +1859,7 @@
   }
 
   // ===== DOM =====
+  const bikeRoot = document.getElementById("bikegame-root");
   const elDesktop = document.getElementById("bikegame-desktop");
   const elMobile = document.getElementById("bikegame-mobile");
   const stage = document.getElementById("stage");
@@ -1745,6 +1922,19 @@
     const isMobile = isMobileDevice();
     elDesktop.style.display = isMobile ? "none" : "block";
     elMobile.style.display = isMobile ? "block" : "none";
+  }
+
+  function updateViewportVars(){
+    const vv = window.visualViewport;
+    const h = vv && vv.height ? vv.height : window.innerHeight;
+    const viewportStyle = bikeRoot ? bikeRoot.style : document.documentElement.style;
+    viewportStyle.setProperty("--app-height", `${Math.round(h)}px`);
+    if (stage) {
+      const top = stage.getBoundingClientRect().top;
+      const bottomReserve = 34 + Math.max(0, window.innerHeight - h);
+      const stageH = clamp(Math.round(h - top - bottomReserve), 260, 720);
+      viewportStyle.setProperty("--stage-height", `${stageH}px`);
+    }
   }
 
   const mqCoarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
@@ -3370,6 +3560,7 @@
 
   // ===== Init =====
   applyDeviceMode();
+  updateViewportVars();
   resizeCanvasToStage();
   setHUD(LIVES_START, 0, totalCoins);
 
@@ -3393,12 +3584,21 @@
   })();
 
   let resizeTimer = 0;
-  window.addEventListener("resize", ()=>{
+  function handleViewportResize(){
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
       applyDeviceMode();
+      updateViewportVars();
       resizeCanvasToStage();
     }, 80);
-  });
+  }
+
+  window.addEventListener("resize", handleViewportResize);
+  window.addEventListener("orientationchange", handleViewportResize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", handleViewportResize);
+  }
 })();
 </script>
+</body>
+</html>
