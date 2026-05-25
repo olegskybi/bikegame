@@ -47,19 +47,10 @@
             <h2>Гонка за покупками</h2>
             <p class="muted">Собирай товары и монеты, открывай призы.</p>
             <div id="auth-box" class="auth-box">
-              <div class="auth-title">Вход по телефону</div>
-              <div id="auth-status" class="auth-status">Можно играть без входа. Для сохранения на разных устройствах войди по телефону.</div>
-              <div id="auth-form" class="auth-form">
-                <input id="auth-phone" class="auth-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00" aria-label="Номер телефона">
-                <button id="btn-auth-code" class="btn" type="button">Получить код</button>
-                <div id="auth-code-row" class="auth-code-row" hidden>
-                  <input id="auth-code" class="auth-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Код из SMS" aria-label="Одноразовый код">
-                  <button id="btn-auth-verify" class="btn primary" type="button">Войти</button>
-                </div>
-              </div>
-              <div id="auth-user" class="auth-user" hidden>
+              <div class="auth-title">Профиль игрока</div>
+              <div id="auth-status" class="auth-status">Определяем ID игрока…</div>
+              <div id="auth-user" class="auth-user">
                 <span id="auth-phone-saved"></span>
-                <button id="btn-auth-logout" class="btn ghost" type="button">Выйти</button>
               </div>
             </div>
             <button id="btn-start" class="btn primary" type="button" disabled>Играть</button>
@@ -668,57 +659,12 @@
     margin-bottom:10px;
   }
 
-  .auth-form,
-  .auth-code-row{
-    display:grid;
-    gap:8px;
-  }
-
-  @media (min-width: 390px){
-    .auth-form,
-    .auth-code-row{
-      grid-template-columns:minmax(0, 1fr) auto;
-      align-items:center;
-    }
-
-    .auth-code-row{
-      grid-column:1 / -1;
-    }
-  }
-
-  .auth-code-row{
-    margin-top:8px;
-  }
-
-  .auth-input{
-    appearance:none;
-    width:100%;
-    min-height:42px;
-    border:var(--ui-border-strong);
-    border-radius:var(--ui-radius-sm);
-    background:#fff;
-    color:#111;
-    font:600 15px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    padding:10px 12px;
-    -webkit-user-select:text;
-    user-select:text;
-  }
-
-  .auth-input:focus-visible{
-    outline:var(--ui-focus);
-    outline-offset:2px;
-  }
-
   .auth-user{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
+    display:grid;
+    gap:4px;
   }
 
-  .auth-user[hidden],
-  .auth-form[hidden],
-  .auth-code-row[hidden]{
+  .auth-user[hidden]{
     display:none !important;
   }
 
@@ -726,7 +672,7 @@
     min-width:0;
     overflow:hidden;
     text-overflow:ellipsis;
-    white-space:nowrap;
+    white-space:normal;
     font-weight:800;
     font-size:14px;
   }
@@ -933,19 +879,9 @@
   const COINS_KEY = "bikegame_coins_v1";
   const PRIZES_KEY = "bikegame_prizes_v1";
   const DAILY_LOGIN_KEY = "bikegame_daily_login_v1";
-  const AUTH_TOKEN_KEY = "bikegame_auth_token_v1";
-  const AUTH_PHONE_KEY = "bikegame_auth_phone_v1";
-
   const API_BASE_URL = "";
-  const AUTH_REQUEST_CODE_ENDPOINT = "/api/auth/request-code";
-  const AUTH_VERIFY_CODE_ENDPOINT = "/api/auth/verify-code";
   const PLAYER_STATE_ENDPOINT = "/api/player/state";
-  const USE_MOCK_AUTH = false;
-  const MOCK_AUTH_PHONE = "+70000000000";
-  const MOCK_AUTH_CODE = "111111";
   const PLAYER_SYNC_DEBOUNCE_MS = 700;
-  const AUTH_RESEND_COOLDOWN_SEC = 60;
-  const OTP_CODE_LENGTH = 6;
   const DAILY_POPUP_SHOWN_KEY = "bikegame_daily_popup_shown_v1";
 
   const COIN_SPAWN_MIN = 8.5;
@@ -1114,30 +1050,35 @@
   }
 
   function getInitialAppAuth(){
-    const injected = window.BIKEGAME_APP_AUTH && typeof window.BIKEGAME_APP_AUTH === "object"
-      ? window.BIKEGAME_APP_AUTH
+    const injected = window.BIKEGAME_PLAYER && typeof window.BIKEGAME_PLAYER === "object"
+      ? window.BIKEGAME_PLAYER
       : {};
     const token = String(
-      window.BIKEGAME_APP_TOKEN ||
-      injected.token ||
-      readParamFromSearchAndHash("token") ||
-      readParamFromSearchAndHash("authToken") ||
-      readParamFromSearchAndHash("appToken") ||
-      readParamFromSearchAndHash("bikegameToken") ||
+      window.BIKEGAME_PLAYER_ID ||
+      injected.playerId ||
+      injected.id ||
+      injected.userId ||
+      injected.accountId ||
+      readParamFromSearchAndHash("playerId") ||
+      readParamFromSearchAndHash("player_id") ||
+      readParamFromSearchAndHash("id") ||
       ""
     ).trim();
     const userId = String(
-      window.BIKEGAME_APP_USER_ID ||
+      window.BIKEGAME_PLAYER_ID ||
+      injected.playerId ||
+      injected.id ||
       injected.userId ||
       injected.accountId ||
-      readParamFromSearchAndHash("userId") ||
-      readParamFromSearchAndHash("accountId") ||
+      readParamFromSearchAndHash("playerId") ||
+      readParamFromSearchAndHash("player_id") ||
+      readParamFromSearchAndHash("id") ||
       ""
     ).trim();
     const label = String(
+      window.BIKEGAME_PLAYER_LABEL ||
       injected.label ||
-      injected.phone ||
-      readParamFromSearchAndHash("phone") ||
+      injected.name ||
       userId ||
       ""
     ).trim();
@@ -1146,21 +1087,20 @@
 
   let appAuth = getInitialAppAuth();
   let isAppAuthMode = !!appAuth.token;
-  let authToken = appAuth.token || safeGetLS(AUTH_TOKEN_KEY) || "";
-  let authPhone = appAuth.label || appAuth.userId || safeGetLS(AUTH_PHONE_KEY) || "";
+  let authToken = appAuth.token || "";
+  let authPhone = appAuth.label || appAuth.userId || "";
   let remoteSyncReady = false;
   let remoteSyncTimer = 0;
   let remoteSyncInFlight = false;
   let remoteSyncQueued = false;
   let suppressRemoteSync = false;
-  let authCooldownTimer = 0;
-  let authCooldownLeft = 0;
 
   function trackGameEvent(name, details = {}){
     const payload = {
       event: name,
-      phone: authPhone || "",
-      signedIn: !!authToken,
+      playerId: authToken || "",
+      profileLabel: authPhone || "",
+      remoteProfile: !!authToken,
       ts: Date.now(),
       ...details
     };
@@ -1179,73 +1119,15 @@
     return `run_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
 
-  function makeMockToken(phone){
-    return `mock.${btoa(unescape(encodeURIComponent(phone))).replace(/=+$/,"")}.${Date.now()}`;
-  }
-
-  function isMockAuthCredentials(phone, code){
-    return USE_MOCK_AUTH && phone === MOCK_AUTH_PHONE && code === MOCK_AUTH_CODE;
-  }
-
   function getApiUrl(path){
     if (/^https?:\/\//i.test(path)) return path;
     return `${API_BASE_URL}${path}`;
   }
 
-  function normalizePhone(value){
-    const raw = String(value || "").trim();
-    const plus = raw.startsWith("+") ? "+" : "";
-    return plus + raw.replace(/[^\d]/g, "");
-  }
-
-  function formatPhoneForInput(value){
-    let digits = String(value || "").replace(/[^\d]/g, "");
-    if (digits.startsWith("8")) digits = "7" + digits.slice(1);
-    if (!digits.startsWith("7")) digits = "7" + digits;
-    digits = digits.slice(0, 11);
-
-    const p1 = digits.slice(1, 4);
-    const p2 = digits.slice(4, 7);
-    const p3 = digits.slice(7, 9);
-    const p4 = digits.slice(9, 11);
-    let out = "+7";
-    if (p1) out += ` ${p1}`;
-    if (p2) out += ` ${p2}`;
-    if (p3) out += `-${p3}`;
-    if (p4) out += `-${p4}`;
-    return out;
-  }
-
   function formatAuthLabel(value){
     const raw = String(value || "").trim();
-    const digits = raw.replace(/[^\d]/g, "");
-    if (digits.length >= 10 && digits.length <= 11) return formatPhoneForInput(raw);
-    return raw || "Аккаунт приложения";
-  }
-
-  function updateAuthCodeButton(){
-    if (!btnAuthCode) return;
-    if (authCooldownLeft > 0) {
-      btnAuthCode.disabled = true;
-      btnAuthCode.textContent = `Повтор ${authCooldownLeft}`;
-      return;
-    }
-    btnAuthCode.disabled = false;
-    btnAuthCode.textContent = "Получить код";
-  }
-
-  function startAuthCooldown(){
-    clearInterval(authCooldownTimer);
-    authCooldownLeft = AUTH_RESEND_COOLDOWN_SEC;
-    updateAuthCodeButton();
-    authCooldownTimer = window.setInterval(() => {
-      authCooldownLeft = Math.max(0, authCooldownLeft - 1);
-      updateAuthCodeButton();
-      if (authCooldownLeft <= 0) {
-        clearInterval(authCooldownTimer);
-        authCooldownTimer = 0;
-      }
-    }, 1000);
+    if (!raw && authToken) return `ID игрока: ${authToken}`;
+    return raw || "Локальный профиль";
   }
 
   function normalizeDailyLoginState(raw){
@@ -1330,17 +1212,23 @@
       method: options.method || "GET",
       headers
     };
+    const requestUrl = new URL(getApiUrl(path), window.location.href);
 
-    if (options.auth !== false && authToken) {
-      headers.Authorization = `Bearer ${authToken}`;
+    if (options.playerScoped !== false && authToken) {
+      headers["X-Player-Id"] = authToken;
+      requestUrl.searchParams.set("playerId", authToken);
     }
 
     if (options.body !== undefined) {
       headers["Content-Type"] = "application/json";
-      init.body = JSON.stringify(options.body);
+      init.body = JSON.stringify(
+        options.playerScoped !== false && authToken
+          ? { playerId: authToken, playerLabel: authPhone || "", ...options.body }
+          : options.body
+      );
     }
 
-    const response = await fetch(getApiUrl(path), init);
+    const response = await fetch(requestUrl.toString(), init);
     const text = await response.text();
     const data = text ? JSON.parse(text) : {};
 
@@ -1356,147 +1244,22 @@
     if (authStatusEl) authStatusEl.textContent = text;
   }
 
-  function setAuthBusy(isBusy){
-    if (btnAuthCode) btnAuthCode.disabled = !!isBusy || authCooldownLeft > 0;
-    if (btnAuthVerify) btnAuthVerify.disabled = !!isBusy;
-  }
-
   function renderAuthUI(){
-    const signedIn = !!authToken;
-
-    if (authBoxEl) authBoxEl.hidden = isAppAuthMode;
-
-    if (!isAppAuthMode && authPhoneInput && authPhone && !authPhoneInput.value) {
-      authPhoneInput.value = formatPhoneForInput(authPhone);
-    }
-    if (authFormEl) authFormEl.hidden = signedIn;
-    if (authUserEl) authUserEl.hidden = !signedIn;
+    if (authBoxEl) authBoxEl.hidden = false;
+    if (authUserEl) authUserEl.hidden = false;
     if (authPhoneSavedEl) authPhoneSavedEl.textContent = formatAuthLabel(authPhone);
-    updateAuthCodeButton();
 
-    if (isAppAuthMode) {
-      setAuthStatus(remoteSyncReady ? "Прогресс сохраняется в аккаунте приложения." : "Подключаем аккаунт приложения…");
-      return;
-    }
-
-    if (signedIn) {
-      setAuthStatus(remoteSyncReady ? "Прогресс сохраняется на аккаунте." : "Вход выполнен. Сервер пока недоступен, локальная копия сохранена.");
+    if (authToken) {
+      setAuthStatus(remoteSyncReady ? "Прогресс привязан к ID игрока и синхронизируется между устройствами." : "Подключаем профиль игрока по ID…");
     } else if (location.protocol === "file:") {
-      setAuthStatus("Вход заработает после размещения файла на сайте с API. Сейчас прогресс сохраняется локально.");
+      setAuthStatus("playerId не передан. Сейчас прогресс сохраняется только на этом устройстве.");
     } else {
-      setAuthStatus("Можно играть без входа. Для сохранения на разных устройствах войди по телефону.");
+      setAuthStatus("Ожидаем playerId из WebView. Без него прогресс сохранится только локально.");
     }
-  }
-
-  async function requestAuthCode(){
-    if (authCooldownLeft > 0) return;
-    const phone = normalizePhone(authPhoneInput ? authPhoneInput.value : "");
-    if (phone.length < 10) {
-      setAuthStatus("Введи номер телефона.");
-      return;
-    }
-
-    setAuthBusy(true);
-    setAuthStatus("Отправляем код…");
-
-    try {
-      if (!USE_MOCK_AUTH || phone !== MOCK_AUTH_PHONE) {
-        await apiRequest(AUTH_REQUEST_CODE_ENDPOINT, {
-          method: "POST",
-          auth: false,
-          body: { phone }
-        });
-      }
-      authPhone = phone;
-      safeSetLS(AUTH_PHONE_KEY, authPhone);
-      if (authCodeRowEl) authCodeRowEl.hidden = false;
-      if (authCodeInput) authCodeInput.focus();
-      startAuthCooldown();
-      trackGameEvent("auth_code_requested");
-      setAuthStatus(USE_MOCK_AUTH && phone === MOCK_AUTH_PHONE ? "Тестовый код: 111111." : "Код отправлен. Введи его ниже.");
-    } catch(_) {
-      setAuthStatus("Не удалось отправить код. Проверь API авторизации.");
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function verifyAuthCode(){
-    const phone = normalizePhone(authPhoneInput ? authPhoneInput.value : authPhone);
-    const code = String(authCodeInput ? authCodeInput.value : "").replace(/[^\d]/g, "").slice(0, OTP_CODE_LENGTH);
-
-    if (phone.length < 10 || code.length < 3) {
-      setAuthStatus("Введи телефон и код.");
-      return;
-    }
-
-    setAuthBusy(true);
-    setAuthStatus("Проверяем код…");
-
-    try {
-      const localSnapshot = getCurrentPlayerState();
-      const result = isMockAuthCredentials(phone, code)
-        ? { token: makeMockToken(phone), state: localSnapshot }
-        : await apiRequest(AUTH_VERIFY_CODE_ENDPOINT, {
-            method: "POST",
-            auth: false,
-            body: { phone, code }
-          });
-      const token = result.token || result.accessToken || "";
-      if (!token) throw new Error("missing_token");
-
-      authToken = token;
-      authPhone = phone;
-      safeSetLS(AUTH_TOKEN_KEY, authToken);
-      safeSetLS(AUTH_PHONE_KEY, authPhone);
-      if (authCodeInput) authCodeInput.value = "";
-      if (authCodeRowEl) authCodeRowEl.hidden = true;
-
-      if (result.state || result.coins !== undefined || result.openedPrizes || result.dailyLoginState) {
-        applyPlayerState(mergePlayerStates(result, localSnapshot));
-        cleanupExpiredPrizes();
-        remoteSyncReady = true;
-        queuePlayerSync("verify-state");
-      } else {
-        await loadRemotePlayerState(localSnapshot);
-      }
-
-      dailyLoginResult = applyDailyLoginReward();
-      renderDailyLoginStatus(dailyLoginResult);
-      setHUD(lives, products, getDisplayCoins());
-      renderAuthUI();
-      queuePlayerSync("login");
-      trackGameEvent("auth_verified");
-    } catch(_) {
-      setAuthStatus("Код не подошёл или сервер недоступен.");
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  function logoutPlayer(){
-    if (isAppAuthMode) return;
-    authToken = "";
-    authPhone = "";
-    remoteSyncReady = false;
-    safeSetLS(AUTH_TOKEN_KEY, "");
-    safeSetLS(AUTH_PHONE_KEY, "");
-    if (authCodeRowEl) authCodeRowEl.hidden = true;
-    if (authPhoneInput) authPhoneInput.value = "";
-    if (authCodeInput) authCodeInput.value = "";
-    renderAuthUI();
-    trackGameEvent("auth_logout");
   }
 
   async function loadRemotePlayerState(localSnapshot = getLocalPlayerStateSnapshot()){
     if (!authToken) return false;
-    if (authToken.startsWith("mock.")) {
-      applyPlayerState(localSnapshot);
-      remoteSyncReady = true;
-      setHUD(lives, products, getDisplayCoins());
-      renderAuthUI();
-      return true;
-    }
 
     try {
       const remotePayload = await apiRequest(PLAYER_STATE_ENDPOINT, { method: "GET" });
@@ -1510,7 +1273,7 @@
       return true;
     } catch(_) {
       remoteSyncReady = false;
-      setAuthStatus("Не удалось загрузить прогресс с сервера. Пока используем локальное сохранение.");
+      setAuthStatus("Не удалось загрузить прогресс по ID игрока. Пока используем локальное сохранение.");
       return false;
     }
   }
@@ -1523,11 +1286,6 @@
 
   async function syncPlayerStateNow(){
     if (suppressRemoteSync || !authToken || !remoteSyncReady) return;
-    if (authToken.startsWith("mock.")) {
-      setAuthStatus("Тестовый режим: прогресс сохранён локально.");
-      return;
-    }
-
     if (remoteSyncInFlight) {
       remoteSyncQueued = true;
       return;
@@ -1540,12 +1298,10 @@
       await apiRequest(PLAYER_STATE_ENDPOINT, {
         method: "POST",
         body: {
-          phone: authPhone,
-          appUserId: isAppAuthMode ? appAuth.userId : "",
           ...getCurrentPlayerState()
         }
       });
-      setAuthStatus(isAppAuthMode ? "Прогресс сохранён в аккаунте приложения." : "Прогресс сохранён на аккаунте.");
+      setAuthStatus("Прогресс сохранён для ID игрока.");
     } catch(_) {
       setAuthStatus("Не удалось сохранить прогресс на сервере. Локальная копия сохранена.");
     } finally {
@@ -1555,17 +1311,17 @@
   }
 
   async function setAppAuth(auth = {}){
-    const token = String(auth.token || auth.authToken || auth.appToken || "").trim();
+    const token = String(auth.playerId || auth.id || auth.userId || auth.accountId || auth.token || "").trim();
     if (!token) return false;
 
     appAuth = {
       token,
-      userId: String(auth.userId || auth.accountId || "").trim(),
-      label: String(auth.label || auth.phone || auth.userId || auth.accountId || "Аккаунт приложения").trim()
+      userId: String(auth.playerId || auth.id || auth.userId || auth.accountId || "").trim(),
+      label: String(auth.label || auth.name || auth.playerId || auth.id || auth.userId || "ID игрока").trim()
     };
     isAppAuthMode = true;
     authToken = appAuth.token;
-    authPhone = appAuth.label || appAuth.userId || "Аккаунт приложения";
+    authPhone = appAuth.label || appAuth.userId || `ID игрока: ${authToken}`;
     remoteSyncReady = false;
     renderAuthUI();
     await loadRemotePlayerState(getLocalPlayerStateSnapshot());
@@ -1573,12 +1329,13 @@
     renderDailyLoginStatus(dailyLoginResult);
     setHUD(lives, products, getDisplayCoins());
     renderAuthUI();
-    queuePlayerSync("app-auth");
-    trackGameEvent("app_auth_connected", { appUserId: appAuth.userId });
+    queuePlayerSync("player-context");
+    trackGameEvent("player_context_connected", { playerId: appAuth.userId || authToken });
     return true;
   }
 
   window.bikegameSetAppAuth = setAppAuth;
+  window.bikegameSetPlayerContext = setAppAuth;
 
 
   function getLocalDateKey(d = new Date()) {
@@ -1898,15 +1655,8 @@
   const dailyLoginTextEl = document.getElementById("daily-login-text");
   const authBoxEl = document.getElementById("auth-box");
   const authStatusEl = document.getElementById("auth-status");
-  const authFormEl = document.getElementById("auth-form");
-  const authPhoneInput = document.getElementById("auth-phone");
-  const btnAuthCode = document.getElementById("btn-auth-code");
-  const authCodeRowEl = document.getElementById("auth-code-row");
-  const authCodeInput = document.getElementById("auth-code");
-  const btnAuthVerify = document.getElementById("btn-auth-verify");
   const authUserEl = document.getElementById("auth-user");
   const authPhoneSavedEl = document.getElementById("auth-phone-saved");
-  const btnAuthLogout = document.getElementById("btn-auth-logout");
 
 
   // ===== Helpers =====
@@ -2596,27 +2346,6 @@
   btnSound.addEventListener("click", () => setSoundEnabled(!soundEnabled));
   updateSoundButton();
 
-  if (btnAuthCode) btnAuthCode.addEventListener("click", requestAuthCode);
-  if (btnAuthVerify) btnAuthVerify.addEventListener("click", verifyAuthCode);
-  if (btnAuthLogout) btnAuthLogout.addEventListener("click", logoutPlayer);
-  if (authPhoneInput) {
-    authPhoneInput.addEventListener("input", () => {
-      const formatted = formatPhoneForInput(authPhoneInput.value);
-      authPhoneInput.value = formatted;
-    });
-    authPhoneInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") requestAuthCode();
-    });
-  }
-  if (authCodeInput) {
-    authCodeInput.addEventListener("input", () => {
-      authCodeInput.value = authCodeInput.value.replace(/[^\d]/g, "").slice(0, OTP_CODE_LENGTH);
-      if (authCodeInput.value.length >= OTP_CODE_LENGTH) verifyAuthCode();
-    });
-    authCodeInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") verifyAuthCode();
-    });
-  }
   renderAuthUI();
 
   // ===== Canvas DPR =====
