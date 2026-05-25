@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bikegame Analytics</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f4f6f5;
+        color: #17211c;
+        font-family: Arial, "Helvetica Neue", sans-serif;
+      }
+      .page {
+        min-height: 100vh;
+        padding: 32px 16px 40px;
+      }
+      .shell {
+        width: min(980px, 100%);
+        margin: 0 auto;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 12px;
+        border: 1px solid #d6e1da;
+        border-radius: 999px;
+        background: #fff;
+        color: #007a3d;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      h1 {
+        margin: 16px 0 10px;
+        font-size: 40px;
+        line-height: 1.02;
+      }
+      .lead {
+        max-width: 700px;
+        margin: 0 0 24px;
+        color: #5e6a64;
+        font-size: 16px;
+        line-height: 1.55;
+      }
+      .panel {
+        border: 1px solid #dce5df;
+        border-radius: 12px;
+        background: #fff;
+        padding: 24px;
+        box-shadow: 0 18px 40px rgba(15, 40, 28, 0.08);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+      .field--wide {
+        grid-column: 1 / -1;
+      }
+      label {
+        color: #34443b;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      input, select {
+        width: 100%;
+        min-height: 48px;
+        border: 1px solid #cfdad3;
+        border-radius: 8px;
+        background: #fff;
+        padding: 0 14px;
+        color: #17211c;
+        font: inherit;
+      }
+      input:focus, select:focus {
+        border-color: #007a3d;
+        outline: 3px solid rgba(0, 122, 61, 0.14);
+      }
+      .password-wrap {
+        position: relative;
+      }
+      .password-wrap input {
+        padding-right: 52px;
+      }
+      .password-eye {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        display: grid;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #007a3d;
+        cursor: pointer;
+        padding: 0;
+        place-items: center;
+        transform: translateY(-50%);
+      }
+      .password-eye svg {
+        width: 20px;
+        height: 20px;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 20px;
+      }
+      button {
+        min-height: 48px;
+        border: 0;
+        border-radius: 8px;
+        background: #007a3d;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        padding: 0 20px;
+      }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+      .status {
+        min-height: 22px;
+        color: #5e6a64;
+        font-size: 14px;
+      }
+      .status.is-error { color: #b42318; }
+      .status.is-ok { color: #007a3d; }
+      .hint {
+        margin-top: 16px;
+        color: #5e6a64;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      @media (max-width: 720px) {
+        .page { padding: 24px 14px 32px; }
+        h1 { font-size: 32px; }
+        .panel { padding: 18px; }
+        .grid { grid-template-columns: 1fr; }
+        .actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <div class="shell">
+        <span class="eyebrow">BIKEGAME REPORT</span>
+        <h1>Выгрузка аналитики</h1>
+        <p class="lead">Выбери период, формат и скачай события игры. Страница работает по той же схеме, что отчет в SPAR Discount Wheel, но для bikegame.</p>
+
+        <section class="panel">
+          <form id="report-form">
+            <div class="grid">
+              <div class="field">
+                <label for="date-from">Дата от</label>
+                <input id="date-from" name="from" type="date" required />
+              </div>
+              <div class="field">
+                <label for="date-to">Дата до</label>
+                <input id="date-to" name="to" type="date" required />
+              </div>
+              <div class="field">
+                <label for="format">Формат</label>
+                <select id="format" name="format">
+                  <option value="zip">ZIP</option>
+                  <option value="csv">CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="password">Пароль администратора</label>
+                <div class="password-wrap">
+                  <input id="password" name="password" type="password" autocomplete="current-password" required />
+                  <button class="password-eye" id="password-eye" type="button" aria-label="Показать пароль">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5c5 0 8.5 4.2 9.7 6.2a1.5 1.5 0 0 1 0 1.6C20.5 14.8 17 19 12 19s-8.5-4.2-9.7-6.2a1.5 1.5 0 0 1 0-1.6C3.5 9.2 7 5 12 5Zm0 2c-4 0-6.8 3.3-7.9 5 1.1 1.7 3.9 5 7.9 5s6.8-3.3 7.9-5C18.8 10.3 16 7 12 7Zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z" fill="currentColor" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="actions">
+              <button id="download-button" type="submit">Скачать отчет</button>
+              <div class="status" id="status" aria-live="polite"></div>
+            </div>
+          </form>
+          <div class="hint">
+            Endpoint можно передать через <code>window.BIKEGAME_REPORT_CONFIG.reportEndpoint</code> или query param <code>?reportEndpoint=...</code>.
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const REPORT_CONFIG = {
+        reportEndpoint: "",
+        ...(window.BIKEGAME_REPORT_CONFIG || {})
+      };
+      const REPORT_ENDPOINT = getReportEndpoint();
+      const form = document.getElementById("report-form");
+      const statusNode = document.getElementById("status");
+      const button = document.getElementById("download-button");
+      const fromInput = document.getElementById("date-from");
+      const toInput = document.getElementById("date-to");
+      const formatInput = document.getElementById("format");
+      const passwordInput = document.getElementById("password");
+      const passwordEye = document.getElementById("password-eye");
+
+      const todayText = formatDateIso(new Date());
+      fromInput.value = todayText;
+      toInput.value = todayText;
+
+      passwordEye.addEventListener("mouseenter", () => {
+        passwordInput.type = "text";
+      });
+      passwordEye.addEventListener("mouseleave", () => {
+        passwordInput.type = "password";
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setStatus("Формирую отчет...");
+        button.disabled = true;
+
+        try {
+          if (!REPORT_ENDPOINT) {
+            throw new Error("report_endpoint_missing");
+          }
+
+          const from = normalizeDateValue(fromInput.value);
+          const to = normalizeDateValue(toInput.value);
+          const password = passwordInput.value;
+          const format = formatInput.value || "zip";
+
+          if (!from || !to) throw new Error("invalid_date");
+
+          const response = await fetch(REPORT_ENDPOINT, {
+            body: JSON.stringify({ format, from, password, to }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST"
+          });
+
+          if (response.status === 401) throw new Error("unauthorized");
+          if (!response.ok) throw new Error("download_failed");
+
+          if (format === "json") {
+            const json = await response.json();
+            const blob = new Blob([JSON.stringify(json, null, 2)], { type: "application/json;charset=utf-8" });
+            startDownload(blob, getDownloadFileName(null, from, to, "json"));
+          } else {
+            const blob = await response.blob();
+            const fileName = getDownloadFileName(response.headers.get("Content-Disposition"), from, to, format);
+            startDownload(blob, fileName);
+          }
+
+          setStatus("Готово. Скачивание началось.", "ok");
+        } catch (error) {
+          if (error.message === "report_endpoint_missing") {
+            setStatus("Не задан report endpoint. Подключи backend функции.", "error");
+          } else if (error.message === "invalid_date") {
+            setStatus("Проверь даты.", "error");
+          } else if (error.message === "unauthorized") {
+            setStatus("Неверный пароль администратора.", "error");
+          } else {
+            setStatus("Не удалось скачать отчет. Попробуй еще раз.", "error");
+          }
+        } finally {
+          window.setTimeout(() => {
+            button.disabled = false;
+          }, 1000);
+        }
+      });
+
+      function getReportEndpoint() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("reportEndpoint") || REPORT_CONFIG.reportEndpoint || "";
+      }
+
+      function startDownload(blob, fileName) {
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(downloadUrl);
+      }
+
+      function getDownloadFileName(disposition, from, to, fallbackExt) {
+        const match = String(disposition || "").match(/filename="([^"]+)"/);
+        return match?.[1] || `bikegame-analytics-${from}-${to}.${fallbackExt}`;
+      }
+
+      function normalizeDateValue(value) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+        const match = String(value || "").match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (!match) return "";
+        return `${match[3]}-${match[2]}-${match[1]}`;
+      }
+
+      function formatDateIso(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function setStatus(text, type = "") {
+        statusNode.textContent = text;
+        statusNode.className = `status${type ? ` is-${type}` : ""}`;
+      }
+    </script>
+  </body>
+</html>
