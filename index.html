@@ -54,6 +54,7 @@
               </div>
             </div>
             <button id="btn-start" class="btn primary" type="button" disabled>Играть</button>
+            <div id="play-limit-note" class="hint play-limit-note" aria-live="polite"></div>
             <div id="hint-once" class="hint">Подсказка: свайпни влево или вправо</div>
           </div>
         </div>
@@ -659,6 +660,15 @@
     margin-bottom:10px;
   }
 
+  .play-limit-note{
+    min-height:16px;
+  }
+
+  .play-limit-note.is-blocked{
+    opacity:0.82;
+    color:#111;
+  }
+
   .auth-user{
     display:grid;
     gap:4px;
@@ -883,6 +893,30 @@
   const PLAYER_STATE_ENDPOINT = "/api/player/state";
   const PLAYER_SYNC_DEBOUNCE_MS = 700;
   const DAILY_POPUP_SHOWN_KEY = "bikegame_daily_popup_shown_v1";
+  const PLAY_LIMIT_KEY = "bikegame_play_limit_v1";
+  const MOSCOW_TIME_ZONE = "Europe/Moscow";
+  const DEFAULT_START_BUTTON_TEXT = "Играть";
+  const BLOCKED_START_BUTTON_TEXT = "Доступно завтра";
+  const DEFAULT_REPLAY_BUTTON_TEXT = "Играть ещё раз";
+  const BLOCKED_REPLAY_BUTTON_TEXT = "Уже сыграно";
+  const INTEGRATION_CONFIG = {
+    backendEventEndpoint: "",
+    metricaId: 0,
+    ...(window.BIKEGAME_CONFIG || {}),
+    ...(window.BIKEGAME_INTEGRATION || {})
+  };
+  const BACKEND_TRACKED_EVENTS = new Set([
+    "game_loaded",
+    "player_context_connected",
+    "run_start",
+    "run_finish",
+    "run_blocked_daily_limit",
+    "daily_login_popup_viewed",
+    "prize_opened",
+    "prize_reward_viewed",
+    "promo_copied",
+    "order_clicked"
+  ]);
 
   const COIN_SPAWN_MIN = 8.5;
   const COIN_SPAWN_MAX = 14.0;
@@ -1098,6 +1132,7 @@
   function trackGameEvent(name, details = {}){
     const payload = {
       event: name,
+      game: "bikegame",
       playerId: authToken || "",
       profileLabel: authPhone || "",
       remoteProfile: !!authToken,
@@ -1112,11 +1147,92 @@
     if (typeof window.bikegameTrack === "function") {
       try { window.bikegameTrack(name, payload); } catch(_) {}
     }
+
+    if (BACKEND_TRACKED_EVENTS.has(name)) {
+      emitIntegrationEvent(name, payload);
+    } else {
+      emitClientOnlyEvent(name, payload);
+    }
   }
 
   function makeRunId(){
     if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
     return `run_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  }
+
+  function getIntegrationPayload(extra = {}){
+    return {
+      game: "bikegame",
+      event: "",
+      pageUrl: window.location.href,
+      playerId: authToken || "",
+      playerLabel: authPhone || "",
+      profileLabel: authPhone || "",
+      isAuthorized: !!authToken,
+      timestamp: new Date().toISOString(),
+      ...extra
+    };
+  }
+
+  function trackMetricaEvent(name, payload = {}){
+    if (typeof window.ym !== "function" || !INTEGRATION_CONFIG.metricaId) return;
+    window.ym(INTEGRATION_CONFIG.metricaId, "reachGoal", name, payload);
+  }
+
+  function sendBackendEvent(name, payload = {}){
+    const endpoint = String(INTEGRATION_CONFIG.backendEventEndpoint || "").trim();
+    if (!endpoint) return;
+
+    const body = JSON.stringify(getIntegrationPayload({ event: name, ...payload }));
+
+    window.fetch(endpoint, {
+      body,
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      keepalive: true,
+      method: "POST",
+      mode: "no-cors"
+    }).catch(() => {});
+  }
+
+  function postNativeMessage(type, payload = {}){
+    const message = getIntegrationPayload({ type, ...payload });
+    let handled = false;
+
+    try {
+      if (window.Print?.postMessage) {
+        window.Print.postMessage(JSON.stringify(message));
+        handled = true;
+      }
+    } catch(_) {}
+
+    try {
+      if (window.webkit?.messageHandlers?.Print?.postMessage) {
+        window.webkit.messageHandlers.Print.postMessage(message);
+        handled = true;
+      }
+    } catch(_) {}
+
+    try {
+      if (window.Android?.postMessage) {
+        window.Android.postMessage(JSON.stringify(message));
+        handled = true;
+      }
+    } catch(_) {}
+
+    return handled;
+  }
+
+  function emitIntegrationEvent(name, payload = {}){
+    const eventPayload = getIntegrationPayload(payload);
+    trackMetricaEvent(name, eventPayload);
+    sendBackendEvent(name, payload);
+    postNativeMessage("event", { event: name, ...payload });
+  }
+
+  function emitClientOnlyEvent(name, payload = {}){
+    const eventPayload = getIntegrationPayload(payload);
+    trackMetricaEvent(name, eventPayload);
+    postNativeMessage("event", { event: name, ...payload });
   }
 
   function getApiUrl(path){
@@ -1128,6 +1244,99 @@
     const raw = String(value || "").trim();
     if (!raw && authToken) return `ID игрока: ${authToken}`;
     return raw || "Локальный профиль";
+  }
+
+  function getPlayerScopedStorageKey(baseKey){
+    const scope = String(authToken || "local").trim() || "local";
+    return `${baseKey}:${scope}`;
+  }
+
+  function getMoscowDateParts(date = new Date()){
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: MOSCOW_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(date);
+
+    return parts.reduce((acc, part) => {
+      if (part.type !== "literal") acc[part.type] = part.value;
+      return acc;
+    }, {});
+  }
+
+  function getMoscowDateKey(date = new Date()){
+    const parts = getMoscowDateParts(date);
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  function getMsUntilNextMoscowDay(date = new Date()){
+    const parts = getMoscowDateParts(date);
+    const secondsToday = (Number(parts.hour) * 3600) + (Number(parts.minute) * 60) + Number(parts.second);
+    return Math.max(0, ((24 * 3600) - secondsToday) * 1000 - date.getMilliseconds());
+  }
+
+  function formatDurationMs(ms){
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const hh = String(Math.floor(totalSec / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
+    const ss = String(totalSec % 60).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  function normalizePlayLimitState(raw){
+    const state = raw && typeof raw === "object" ? raw : {};
+    return {
+      lastPlayedDate: typeof state.lastPlayedDate === "string" ? state.lastPlayedDate : "",
+      lastPlayedAt: typeof state.lastPlayedAt === "string" ? state.lastPlayedAt : "",
+      lastRunId: typeof state.lastRunId === "string" ? state.lastRunId : ""
+    };
+  }
+
+  function loadPlayLimitState(){
+    try {
+      const scoped = localStorage.getItem(getPlayerScopedStorageKey(PLAY_LIMIT_KEY));
+      const fallback = localStorage.getItem(PLAY_LIMIT_KEY);
+      return normalizePlayLimitState(JSON.parse(scoped || fallback || "{}"));
+    } catch(_) {
+      return normalizePlayLimitState({});
+    }
+  }
+
+  function savePlayLimitState(state){
+    try {
+      localStorage.setItem(getPlayerScopedStorageKey(PLAY_LIMIT_KEY), JSON.stringify(normalizePlayLimitState(state)));
+    } catch(_) {}
+    queuePlayerSync("play-limit");
+  }
+
+  function hasPlayedToday(state = loadPlayLimitState()){
+    return normalizePlayLimitState(state).lastPlayedDate === getMoscowDateKey();
+  }
+
+  function getPlayLimitMessage(){
+    const state = loadPlayLimitState();
+    if (!hasPlayedToday(state)) {
+      return authToken
+        ? "Один заезд в день сохраняется по ID игрока."
+        : "Без playerId ограничение будет работать только на этом устройстве.";
+    }
+
+    return `Сегодня заезд уже использован. Следующая попытка через ${formatDurationMs(getMsUntilNextMoscowDay())}.`;
+  }
+
+  function markRunUsedToday(runId){
+    const nextState = {
+      lastPlayedDate: getMoscowDateKey(),
+      lastPlayedAt: new Date().toISOString(),
+      lastRunId: String(runId || "")
+    };
+    savePlayLimitState(nextState);
+    return nextState;
   }
 
   function normalizeDailyLoginState(raw){
@@ -1143,7 +1352,8 @@
     return {
       coins: loadCoins(),
       openedPrizes: loadOpenedPrizes(),
-      dailyLoginState: loadDailyLoginState()
+      dailyLoginState: loadDailyLoginState(),
+      playLimitState: loadPlayLimitState()
     };
   }
 
@@ -1151,7 +1361,8 @@
     return {
       coins: Math.max(0, totalCoins | 0),
       openedPrizes: openedPrizes && typeof openedPrizes === "object" ? openedPrizes : {},
-      dailyLoginState: loadDailyLoginState()
+      dailyLoginState: loadDailyLoginState(),
+      playLimitState: loadPlayLimitState()
     };
   }
 
@@ -1165,7 +1376,8 @@
       openedPrizes: src.openedPrizes && typeof src.openedPrizes === "object" && !Array.isArray(src.openedPrizes)
         ? src.openedPrizes
         : {},
-      dailyLoginState: normalizeDailyLoginState(src.dailyLoginState)
+      dailyLoginState: normalizeDailyLoginState(src.dailyLoginState),
+      playLimitState: normalizePlayLimitState(src.playLimitState)
     };
   }
 
@@ -1189,7 +1401,11 @@
     return {
       coins: Math.max(remote.coins, local.coins),
       openedPrizes: opened,
-      dailyLoginState: pickDailyLoginState(remote.dailyLoginState, local.dailyLoginState)
+      dailyLoginState: pickDailyLoginState(remote.dailyLoginState, local.dailyLoginState),
+      playLimitState:
+        String(remote.playLimitState.lastPlayedAt || "") >= String(local.playLimitState.lastPlayedAt || "")
+          ? remote.playLimitState
+          : local.playLimitState
     };
   }
 
@@ -1201,6 +1417,7 @@
     saveCoins(totalCoins);
     saveOpenedPrizes(openedPrizes);
     saveDailyLoginState(next.dailyLoginState);
+    savePlayLimitState(next.playLimitState);
     suppressRemoteSync = false;
   }
 
@@ -1269,11 +1486,13 @@
       remoteSyncReady = true;
       setHUD(lives, products, getDisplayCoins());
       renderAuthUI();
+      updatePlayLimitUI();
       queuePlayerSync("merge");
       return true;
     } catch(_) {
       remoteSyncReady = false;
       setAuthStatus("Не удалось загрузить прогресс по ID игрока. Пока используем локальное сохранение.");
+      updatePlayLimitUI();
       return false;
     }
   }
@@ -1329,6 +1548,7 @@
     renderDailyLoginStatus(dailyLoginResult);
     setHUD(lives, products, getDisplayCoins());
     renderAuthUI();
+    updatePlayLimitUI();
     queuePlayerSync("player-context");
     trackGameEvent("player_context_connected", { playerId: appAuth.userId || authToken });
     return true;
@@ -1637,6 +1857,7 @@
   const btnStart = document.getElementById("btn-start");
   const btnReplayWin = document.getElementById("btn-replay-win");
   const btnReplayLose = document.getElementById("btn-replay-lose");
+  const playLimitNoteEl = document.getElementById("play-limit-note");
 
   const winTitleEl = document.getElementById("win-title");
   const winResultEl = document.getElementById("win-result");
@@ -1714,6 +1935,56 @@
     const hidden = !visible;
     if (hudTimeLabel) hudTimeLabel.hidden = hidden;
     if (hudTime) hudTime.hidden = hidden;
+  }
+
+  let assetsReady = false;
+  let playLimitTimerId = 0;
+
+  function isPlayBlockedToday(){
+    return hasPlayedToday(loadPlayLimitState());
+  }
+
+  function stopPlayLimitTimer(){
+    if (playLimitTimerId) {
+      clearInterval(playLimitTimerId);
+      playLimitTimerId = 0;
+    }
+  }
+
+  function updatePlayLimitUI(){
+    const blocked = isPlayBlockedToday();
+    const canStart = assetsReady && !startLock && !blocked;
+
+    if (btnStart) {
+      btnStart.disabled = !canStart;
+      btnStart.textContent = blocked ? BLOCKED_START_BUTTON_TEXT : DEFAULT_START_BUTTON_TEXT;
+    }
+
+    if (btnReplayWin) {
+      btnReplayWin.disabled = !!startLock || blocked;
+      btnReplayWin.textContent = blocked ? BLOCKED_REPLAY_BUTTON_TEXT : DEFAULT_REPLAY_BUTTON_TEXT;
+    }
+
+    if (btnReplayLose) {
+      btnReplayLose.disabled = !!startLock || blocked;
+      btnReplayLose.textContent = blocked ? BLOCKED_REPLAY_BUTTON_TEXT : DEFAULT_REPLAY_BUTTON_TEXT;
+    }
+
+    if (playLimitNoteEl) {
+      playLimitNoteEl.textContent = getPlayLimitMessage();
+      playLimitNoteEl.classList.toggle("is-blocked", blocked);
+    }
+
+    stopPlayLimitTimer();
+    if (blocked) {
+      playLimitTimerId = window.setInterval(() => {
+        if (!isPlayBlockedToday()) {
+          updatePlayLimitUI();
+          return;
+        }
+        if (playLimitNoteEl) playLimitNoteEl.textContent = getPlayLimitMessage();
+      }, 1000);
+    }
   }
 
   function updateTimeHUD(force = false){
@@ -2177,14 +2448,10 @@
   let startLock = false;
   function lockStartButtons() {
     startLock = true;
-    btnStart.disabled = true;
-    btnReplayWin.disabled = true;
-    btnReplayLose.disabled = true;
+    updatePlayLimitUI();
     setTimeout(() => {
       startLock = false;
-      btnStart.disabled = false;
-      btnReplayWin.disabled = false;
-      btnReplayLose.disabled = false;
+      updatePlayLimitUI();
     }, 250);
   }
 
@@ -3278,18 +3545,34 @@
 
   function startGame(){
     if(startLock) return;
+    if (isPlayBlockedToday()) {
+      updatePlayLimitUI();
+      trackGameEvent("run_blocked_daily_limit", { msUntilNextRun: getMsUntilNextMoscowDay() });
+      return;
+    }
     lockStartButtons();
     ensureAudio();
 
     resetGame();
     setOverlay(null);
 
+    currentRunId = makeRunId();
+    markRunUsedToday(currentRunId);
+    updatePlayLimitUI();
+    if (authToken) {
+      syncPlayerStateNow().catch(() => {});
+    }
+
     running=true;
     paused=false;
     setTimeHUDVisible(true);
     updateTimeHUD(true);
-    currentRunId = makeRunId();
-    trackGameEvent("run_start", { runId: currentRunId, durationSec: RUN_DURATION_SEC });
+    trackGameEvent("run_start", {
+      runId: currentRunId,
+      durationSec: RUN_DURATION_SEC,
+      cooldownMs: getMsUntilNextMoscowDay(),
+      playDate: getMoscowDateKey()
+    });
     rafId = requestAnimationFrame(frame);
   }
 
@@ -3303,11 +3586,13 @@
   resizeCanvasToStage();
   setTimeHUDVisible(false);
   setHUD(LIVES_START, 0, totalCoins);
+  updatePlayLimitUI();
 
 
   (async () => {
     setOverlay("loading");
-    btnStart.disabled = true;
+    assetsReady = false;
+    updatePlayLimitUI();
     if (authToken) {
       await loadRemotePlayerState(getLocalPlayerStateSnapshot());
     }
@@ -3316,8 +3601,13 @@
     setHUD(LIVES_START, 0, totalCoins);
     renderAuthUI();
     await preloadAll();
+    assetsReady = true;
     setOverlay("start");
-    btnStart.disabled = false;
+    updatePlayLimitUI();
+    trackGameEvent("game_loaded", {
+      hasPlayerId: !!authToken,
+      blockedToday: isPlayBlockedToday()
+    });
     if (shouldShowDailyLoginPopup(dailyLoginResult)) {
       openDailyLoginPopup(dailyLoginResult);
     }
